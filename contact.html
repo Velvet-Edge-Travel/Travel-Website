@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Speak with an Aurelia travel designer and begin planning your private journey."
+    />
+    <title>Contact | Aurelia Voyages</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav container">
+        <a class="brand" href="index.html"
+          ><span class="brand__mark"><span>A</span></span
+          ><span class="brand__name">Aurelia Voyages</span></a
+        ><button
+          class="nav-toggle"
+          type="button"
+          aria-label="Open navigation"
+          aria-expanded="false"
+        >
+          <span></span><span></span>
+        </button>
+        <div class="nav__links">
+          <a href="index.html">Home</a><a href="about.html">About</a
+          ><a href="signature-holidays.html">Signature Holidays</a
+          ><a href="golf-packages.html">Golf</a
+          ><a href="destinations.html">Destinations</a
+          ><a class="nav__cta active" href="contact.html">Plan a journey</a>
+        </div>
+      </nav>
+    </header>
+    <main>
+      <section
+        class="hero page-hero"
+        style="
+          --hero: url(&quot;https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?auto=format&fit=crop&w=2200&q=90&quot;);
+        "
+      >
+        <div class="hero__content container">
+          <p class="eyebrow">Begin your journey</p>
+          <h1>Tell us what you are <span>dreaming of.</span></h1>
+          <p class="hero__copy">
+            A few details are all we need to start. Your dedicated travel
+            designer will be in touch within one working day.
+          </p>
+        </div>
+      </section>
+      <section class="section section--sand">
+        <div class="contact-grid container">
+          <div data-reveal>
+            <p class="eyebrow">Speak with us</p>
+            <h2>It starts with a conversation.</h2>
+            <p class="lead">
+              Call, email or share your ideas using the enquiry form. No detail
+              is too small and no plan needs to be fully formed.
+            </p>
+            <div class="contact-details">
+              <div class="contact-item">
+                <span>Telephone</span
+                ><a href="tel:+442079460880"
+                  >+44&nbsp;(0)20&nbsp;7946&nbsp;0880</a
+                >
+              </div>
+              <div class="contact-item">
+                <span>Email</span
+                ><a href="mailto:concierge@aureliavoyages.com"
+                  >concierge@aureliavoyages.com</a
+                >
+              </div>
+              <div class="contact-item">
+                <span>Studio</span
+                ><strong
+                  >18 Albemarle Street, Mayfair<br />London W1S 4HR</strong
+                >
+              </div>
+              <div class="contact-item">
+                <span>Hours</span><strong>Monday–Friday, 9am–6pm</strong>
+              </div>
+            </div>
+          </div>
+          <form class="form" data-enquiry-form data-reveal>
+            <p class="eyebrow">Travel enquiry</p>
+            <h3>Where shall we begin?</h3>
+            <div class="form__row">
+              <div class="field">
+                <label for="first-name">First name</label
+                ><input
+                  id="first-name"
+                  name="firstName"
+                  type="text"
+                  autocomplete="given-name"
+                  required
+                />
+              </div>
+              <div class="field">
+                <label for="last-name">Last name</label
+                ><input
+                  id="last-name"
+                  name="lastName"
+                  type="text"
+                  autocomplete="family-name"
+                  required
+                />
+              </div>
+            </div>
+            <div class="form__row">
+              <div class="field">
+                <label for="email">Email</label
+                ><input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autocomplete="email"
+                  required
+                />
+              </div>
+              <div class="field">
+                <label for="phone">Telephone</label
+                ><input id="phone" name="phone" type="tel" autocomplete="tel" />
+              </div>
+            </div>
+            <div class="form__row">
+              <div class="field">
+                <label for="destination">Destination or region</label
+                ><input
+                  id="destination"
+                  name="destination"
+                  type="text"
+                  placeholder="Where are you considering?"
+                />
+              </div>
+              <div class="field">
+                <label for="travel-type">Journey type</label
+                ><select id="travel-type" name="travelType">
+                  <option>Signature holiday</option>
+                  <option>Golf journey</option>
+                  <option>Honeymoon</option>
+                  <option>Family adventure</option>
+                  <option>Celebration</option>
+                  <option>Not sure yet</option>
+                </select>
+              </div>
+            </div>
+            <div class="form__row">
+              <div class="field">
+                <label for="when">When would you like to travel?</label
+                ><input
+                  id="when"
+                  name="when"
+                  type="text"
+                  placeholder="Month or preferred dates"
+                />
+              </div>
+              <div class="field">
+                <label for="budget">Approximate budget</label
+                ><select id="budget" name="budget">
+                  <option>£5,000–£10,000</option>
+                  <option>£10,000–£20,000</option>
+                  <option>£20,000–£40,000</option>
+                  <option>£40,000+</option>
+                  <option>To be discussed</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label for="message">Tell us about your ideal journey</label
+              ><textarea
+                id="message"
+                name="message"
+                placeholder="Who is travelling, what do you love, and what would make this trip unforgettable?"
+              ></textarea>
+            </div>
+            <button class="btn btn--dark" type="submit">Send enquiry</button>
+            <p class="form__note">
+              By submitting this form, you agree to our privacy policy. This
+              demonstration form does not transmit data until connected to a
+              form service.
+            </p>
+            <div class="form-status" role="status">
+              Thank you. Your enquiry has been prepared. Connect this form to
+              your preferred form service before publishing.
+            </div>
+          </form>
+        </div>
+      </section>
+      <section class="section">
+        <div class="narrow" data-reveal>
+          <p class="eyebrow">Already travelling?</p>
+          <h2>Our travellers are never alone.</h2>
+          <p class="lead">
+            If you are currently away and need assistance, use the 24-hour
+            support number in your travel documents for immediate help.
+          </p>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="footer__main container">
+        <div class="footer__about">
+          <a class="brand" href="index.html"
+            ><span class="brand__mark"><span>A</span></span
+            ><span class="brand__name">Aurelia Voyages</span></a
+          >
+          <p>Exceptional private travel, thoughtfully designed in London.</p>
+        </div>
+        <div class="footer__column">
+          <h4>Explore</h4>
+          <a href="signature-holidays.html">Signature Holidays</a
+          ><a href="golf-packages.html">Golf Packages</a
+          ><a href="destinations.html">Destinations</a>
+        </div>
+        <div class="footer__column">
+          <h4>Company</h4>
+          <a href="about.html">About</a><a href="contact.html">Contact</a>
+        </div>
+        <div class="footer__column">
+          <h4>Concierge</h4>
+          <a href="tel:+442079460880">+44&nbsp;(0)20&nbsp;7946&nbsp;0880</a
+          ><a href="mailto:concierge@aureliavoyages.com"
+            >concierge@aureliavoyages.com</a
+          >
+        </div>
+      </div>
+      <div class="footer__bottom container">
+        <span>© <span data-year></span> Aurelia Voyages.</span
+        ><span>Privacy · Terms · Booking Conditions</span>
+      </div>
+    </footer>
+    <script src="script.js"></script>
+  </body>
+</html>
