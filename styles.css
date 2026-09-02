@@ -241,9 +241,9 @@ h3 {
 }
 .brand__mark {
   display: block;
-  width: 70px;
-  height: 34px;
-  flex: 0 0 70px;
+  width: 80px;
+  height: 40px;
+  flex: 0 0 80px;
   background: url("velvet-edge-logo-v2.svg") center / contain no-repeat;
 }
 .brand__mark span {
