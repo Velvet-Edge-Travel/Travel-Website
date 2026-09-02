@@ -237,14 +237,14 @@ h3 {
 .brand {
   display: flex;
   align-items: center;
-  gap: 1px;
+  gap: 0px;
 }
 .brand__mark {
   display: block;
-  width: 80px;
-  height: 40px;
-  flex: 0 0 80px;
-  background: url("velvet-edge-logo-v2.svg") right / contain no-repeat;
+  width: 90px;
+  height: 50px;
+  flex: 0 0 90px;
+  background: url("velvet-edge-logo-v2.svg") centre / contain no-repeat;
 }
 .brand__mark span {
   position: absolute;
