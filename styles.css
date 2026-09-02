@@ -241,9 +241,9 @@ h3 {
 }
 .brand__mark {
   display: block;
-  width: 43px;
-  height: 17px;
-  flex: 0 0 43px;
+  width: 50px;
+  height: 22px;
+  flex: 0 0 50px;
   object-fit: contain;
 }
 .brand__name {
