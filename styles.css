@@ -237,13 +237,13 @@ h3 {
 .brand {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 1px;
 }
 .brand__mark {
   display: block;
-  width: 54px;
-  height: 26px;
-  flex: 0 0 54px;
+  width: 50px;
+  height: 23px;
+  flex: 0 0 50px;
   object-fit: contain;
 }
 .brand__name {
