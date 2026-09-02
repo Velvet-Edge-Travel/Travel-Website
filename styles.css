@@ -237,7 +237,7 @@ h3 {
 .brand {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 1px;
 }
 .brand__mark {
   display: block;
