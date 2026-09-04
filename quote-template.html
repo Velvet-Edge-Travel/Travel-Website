@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta
+      name="description"
+      content="Velvet Edge Travel private quote builder."
+    />
+    <title>Quote Builder | Velvet Edge Travel</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="builder-page">
+    <header class="builder-header">
+      <div class="container builder-header__inner">
+        <a class="brand" href="index.html" aria-label="Velvet Edge Travel home">
+          <img
+            class="brand__mark"
+            src="velvet-edge-logo-v3.svg"
+            alt=""
+            width="150"
+            height="56"
+          />
+          <span class="brand__name">Velvet Edge Travel</span>
+        </a>
+        <div>
+          <span>Agent workspace</span>
+          <strong>Client Quote Builder</strong>
+        </div>
+      </div>
+    </header>
+
+    <main class="builder-main container">
+      <section class="builder-intro">
+        <div>
+          <p class="eyebrow">Create a client proposal</p>
+          <h1>Build a beautiful quote without editing code.</h1>
+        </div>
+        <p>
+          Complete the form, add as many itinerary items as required, preview
+          the result and download the finished HTML file. Required fields are
+          marked with an asterisk.
+        </p>
+      </section>
+
+      <noscript>
+        <p class="builder-alert">
+          JavaScript must be enabled to generate a quote.
+        </p>
+      </noscript>
+
+      <form class="builder-form" id="quote-builder">
+        <section class="builder-panel">
+          <div class="builder-panel__heading">
+            <span>01</span>
+            <div>
+              <p>Publishing</p>
+              <h2>File and link settings</h2>
+            </div>
+          </div>
+          <div class="builder-fields builder-fields--2">
+            <div class="builder-field">
+              <label for="site-url">GitHub Pages website address *</label>
+              <input
+                id="site-url"
+                name="siteUrl"
+                type="url"
+                placeholder="https://username.github.io/repository"
+                required
+              />
+              <small>Do not include a filename or trailing slash.</small>
+            </div>
+            <div class="builder-field">
+              <label for="quote-reference">Quote reference *</label>
+              <input
+                id="quote-reference"
+                name="reference"
+                type="text"
+                placeholder="VE-ALG-2026-014"
+                required
+              />
+              <small>This creates the HTML filename and client link.</small>
+            </div>
+          </div>
+          <div class="builder-link-preview">
+            <span>Expected client link</span>
+            <strong data-expected-link
+              >Enter your site address and reference</strong
+            >
+            <button type="button" data-copy-link disabled>Copy link</button>
+          </div>
+        </section>
+
+        <section class="builder-panel">
+          <div class="builder-panel__heading">
+            <span>02</span>
+            <div>
+              <p>Introduction</p>
+              <h2>Client and proposal</h2>
+            </div>
+          </div>
+          <div class="builder-fields builder-fields--2">
+            <div class="builder-field">
+              <label for="client-name">Client name *</label
+              ><input
+                id="client-name"
+                name="clientName"
+                type="text"
+                placeholder="Mr & Mrs Smith"
+                required
+              />
+            </div>
+            <div class="builder-field">
+              <label for="prepared-date">Prepared date *</label
+              ><input
+                id="prepared-date"
+                name="preparedDate"
+                type="date"
+                required
+              />
+            </div>
+            <div class="builder-field">
+              <label for="valid-until">Valid until *</label
+              ><input id="valid-until" name="validUntil" type="date" required />
+            </div>
+            <div class="builder-field">
+              <label for="proposal-title">Proposal title *</label
+              ><input
+                id="proposal-title"
+                name="title"
+                type="text"
+                placeholder="Golf beneath the Algarve sun"
+                required
+              />
+            </div>
+          </div>
+          <div class="builder-field">
+            <label for="proposal-intro">Proposal introduction *</label
+            ><textarea
+              id="proposal-intro"
+              name="intro"
+              placeholder="A concise, personal introduction to the journey."
+              required
+            ></textarea>
+          </div>
+        </section>
+
+        <section class="builder-panel">
+          <div class="builder-panel__heading">
+            <span>03</span>
+            <div>
+              <p>At a glance</p>
+              <h2>Journey summary</h2>
+            </div>
+          </div>
+          <div class="builder-fields builder-fields--3">
+            <div class="builder-field">
+              <label for="hotel">Primary hotel *</label
+              ><input id="hotel" name="hotel" type="text" required />
+            </div>
+            <div class="builder-field">
+              <label for="location">Destination *</label
+              ><input id="location" name="location" type="text" required />
+            </div>
+            <div class="builder-field">
+              <label for="room">Room type *</label
+              ><input id="room" name="room" type="text" required />
+            </div>
+            <div class="builder-field">
+              <label for="arrival">Arrival date *</label
+              ><input id="arrival" name="arrival" type="date" required />
+            </div>
+            <div class="builder-field">
+              <label for="nights">Number of nights *</label
+              ><input
+                id="nights"
+                name="nights"
+                type="number"
+                min="1"
+                required
+              />
+            </div>
+            <div class="builder-field">
+              <label for="board">Board basis *</label
+              ><select id="board" name="board" required>
+                <option value="">Select</option>
+                <option>Room only</option>
+                <option>Bed &amp; breakfast</option>
+                <option>Half board</option>
+                <option>Full board</option>
+                <option>All inclusive</option>
+              </select>
+            </div>
+            <div class="builder-field">
+              <label for="guests">Total guests *</label
+              ><input
+                id="guests"
+                name="guests"
+                type="text"
+                placeholder="4 adults"
+                required
+              />
+            </div>
+            <div class="builder-field">
+              <label for="per-person">Price per person *</label
+              ><input
+                id="per-person"
+                name="perPerson"
+                type="text"
+                placeholder="£3,850"
+                required
+              />
+            </div>
+            <div class="builder-field">
+              <label for="total-price">Total price *</label
+              ><input
+                id="total-price"
+                name="totalPrice"
+                type="text"
+                placeholder="£15,400"
+                required
+              />
+            </div>
+          </div>
+          <div class="builder-field">
+            <label for="golf-summary">Golf courses summary</label
+            ><input
+              id="golf-summary"
+              name="golfSummary"
+              type="text"
+              placeholder="Monte Rei · Quinta do Lago South · Vale do Lobo Royal"
+            />
+          </div>
+          <div class="builder-field">
+            <label for="inclusions">Included in the proposal</label>
+            <textarea
+              id="inclusions"
+              name="inclusions"
+              placeholder="Enter one inclusion per line."
+            ></textarea>
+            <small>Each line becomes a separate ticked item.</small>
+          </div>
+        </section>
+
+        <section class="builder-panel">
+          <div class="builder-panel__heading builder-panel__heading--action">
+            <span>04</span>
+            <div>
+              <p>Day by day</p>
+              <h2>Itinerary overview</h2>
+            </div>
+            <button class="builder-add" type="button" data-add="day">
+              + Add day
+            </button>
+          </div>
+          <div class="builder-repeater" data-list="day"></div>
+        </section>
+
+        <section class="builder-panel">
+          <div class="builder-panel__heading builder-panel__heading--action">
+            <span>05</span>
+            <div>
+              <p>Your stay</p>
+              <h2>Accommodation itinerary</h2>
+            </div>
+            <button class="builder-add" type="button" data-add="stay">
+              + Add hotel
+            </button>
+          </div>
+          <div class="builder-repeater" data-list="stay"></div>
+        </section>
+
+        <section class="builder-panel">
+          <div class="builder-panel__heading builder-panel__heading--action">
+            <span>06</span>
+            <div>
+              <p>Your rounds</p>
+              <h2>Golf itinerary</h2>
+            </div>
+            <button class="builder-add" type="button" data-add="golf">
+              + Add round
+            </button>
+          </div>
+          <div class="builder-repeater" data-list="golf"></div>
+          <div class="builder-field">
+            <label for="golf-note">Golf notes</label
+            ><textarea
+              id="golf-note"
+              name="golfNote"
+              placeholder="Handicap requirements, dress codes, availability conditions or other important notes."
+            ></textarea>
+          </div>
+        </section>
+
+        <section class="builder-panel">
+          <div class="builder-panel__heading">
+            <span>07</span>
+            <div>
+              <p>Contact</p>
+              <h2>Agent details</h2>
+            </div>
+          </div>
+          <div class="builder-fields builder-fields--2">
+            <div class="builder-field">
+              <label for="agent-email">Reply email *</label
+              ><input
+                id="agent-email"
+                name="agentEmail"
+                type="email"
+                value="concierge@velvetedgetravel.com"
+                required
+              />
+            </div>
+            <div class="builder-field">
+              <label for="agent-phone">Contact telephone *</label
+              ><input
+                id="agent-phone"
+                name="agentPhone"
+                type="text"
+                value="+44 (0)20 7946 0880"
+                required
+              />
+            </div>
+          </div>
+        </section>
+
+        <section class="builder-actions">
+          <div>
+            <button class="btn btn--gold" type="button" data-preview>
+              Preview quote
+            </button>
+            <button class="btn btn--dark" type="submit">
+              Download HTML file
+            </button>
+          </div>
+          <div>
+            <button class="builder-secondary" type="button" data-save-draft>
+              Save editable draft
+            </button>
+            <label class="builder-secondary" for="draft-file"
+              >Load editable draft</label
+            >
+            <input
+              id="draft-file"
+              type="file"
+              accept="application/json,.json"
+              data-load-draft
+              hidden
+            />
+          </div>
+          <p class="builder-status" role="status" data-builder-status></p>
+        </section>
+      </form>
+    </main>
+
+    <template id="day-template">
+      <article class="builder-item" data-item="day">
+        <div class="builder-item__top">
+          <strong>Itinerary day</strong
+          ><button type="button" data-remove>Remove</button>
+        </div>
+        <div class="builder-fields builder-fields--3">
+          <div class="builder-field">
+            <label>Day number</label
+            ><input data-key="day" type="number" min="1" required />
+          </div>
+          <div class="builder-field">
+            <label>Date</label><input data-key="date" type="date" required />
+          </div>
+          <div class="builder-field">
+            <label>Heading</label
+            ><input
+              data-key="title"
+              type="text"
+              placeholder="Arrive in the Algarve"
+              required
+            />
+          </div>
+        </div>
+        <div class="builder-field">
+          <label>Full details</label
+          ><textarea data-key="details" required></textarea>
+        </div>
+      </article>
+    </template>
+
+    <template id="stay-template">
+      <article class="builder-item" data-item="stay">
+        <div class="builder-item__top">
+          <strong>Accommodation</strong
+          ><button type="button" data-remove>Remove</button>
+        </div>
+        <div class="builder-fields builder-fields--3">
+          <div class="builder-field">
+            <label>Hotel</label><input data-key="hotel" type="text" required />
+          </div>
+          <div class="builder-field">
+            <label>Location</label
+            ><input data-key="location" type="text" required />
+          </div>
+          <div class="builder-field">
+            <label>Nights</label
+            ><input data-key="nights" type="number" min="1" required />
+          </div>
+          <div class="builder-field">
+            <label>Room</label><input data-key="room" type="text" required />
+          </div>
+          <div class="builder-field">
+            <label>Board</label><input data-key="board" type="text" required />
+          </div>
+          <div class="builder-field">
+            <label>Image URL</label
+            ><input data-key="image" type="url" placeholder="https://..." />
+          </div>
+          <div class="builder-field">
+            <label>Check-in</label><input data-key="checkIn" type="text" />
+          </div>
+          <div class="builder-field">
+            <label>Check-out</label><input data-key="checkOut" type="text" />
+          </div>
+          <div class="builder-field">
+            <label>Address</label><input data-key="address" type="text" />
+          </div>
+        </div>
+        <div class="builder-field">
+          <label>Hotel description</label
+          ><textarea data-key="description" required></textarea>
+        </div>
+      </article>
+    </template>
+
+    <template id="golf-template">
+      <article class="builder-item" data-item="golf">
+        <div class="builder-item__top">
+          <strong>Golf round</strong
+          ><button type="button" data-remove>Remove</button>
+        </div>
+        <div class="builder-fields builder-fields--3">
+          <div class="builder-field">
+            <label>Date</label><input data-key="date" type="date" required />
+          </div>
+          <div class="builder-field">
+            <label>Course</label
+            ><input data-key="course" type="text" required />
+          </div>
+          <div class="builder-field">
+            <label>Tee time</label
+            ><input data-key="teeTime" type="time" required />
+          </div>
+        </div>
+        <div class="builder-field">
+          <label>Course details</label
+          ><input
+            data-key="courseDetails"
+            type="text"
+            placeholder="Championship parkland · 18 holes · Par 72"
+          />
+        </div>
+        <div class="builder-field">
+          <label>Included</label
+          ><textarea
+            data-key="included"
+            placeholder="Green fee, shared buggy and return transfer"
+          ></textarea>
+        </div>
+      </article>
+    </template>
+
+    <script src="quote-builder.js"></script>
+  </body>
+</html>
