@@ -53,6 +53,125 @@ const setStatus = (message, isError = false) => {
   status.classList.toggle("is-error", isError);
 };
 
+// Keep image data in the existing image field so HTML exports and JSON drafts
+// remain self-contained, including when an older draft is loaded.
+let imageControlId = 0;
+const prepareImage = async (file) => {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    throw new Error("Please choose a JPG, PNG or WebP image.");
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    throw new Error("Please choose an image smaller than 20 MB.");
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Image processing is unavailable in this browser.");
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+};
+
+const setupImageUpload = (item) => {
+  const field = item.querySelector('[data-key="image"]');
+  if (!field) return;
+  const container = field.parentElement;
+  const urlLabel = container.querySelector("label");
+  const id = `stay-image-${++imageControlId}`;
+  field.id = `${id}-url`;
+  urlLabel.htmlFor = field.id;
+  urlLabel.textContent = "Or use an image URL";
+
+  const uploadLabel = document.createElement("label");
+  uploadLabel.htmlFor = id;
+  uploadLabel.textContent = "Upload image";
+  const upload = document.createElement("input");
+  upload.type = "file";
+  upload.id = id;
+  upload.accept = "image/jpeg,image/png,image/webp";
+  const help = document.createElement("small");
+  help.id = `${id}-help`;
+  help.textContent = "JPG, PNG or WebP, up to 20 MB. Photos are resized and embedded in your quote and editable draft.";
+  upload.setAttribute("aria-describedby", help.id);
+  const message = document.createElement("small");
+  message.setAttribute("role", "status");
+  const preview = document.createElement("img");
+  preview.alt = "Selected accommodation image";
+  preview.style.cssText = "display:block;max-width:100%;max-height:180px;object-fit:contain;margin:10px 0;border-radius:8px";
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "builder-secondary";
+  remove.textContent = "Remove image";
+  container.prepend(uploadLabel, upload, help);
+  container.append(message, preview, remove);
+
+  let revision = 0;
+  const refresh = () => {
+    const embedded = /^data:image\//i.test(field.value);
+    field.type = embedded ? "hidden" : "url";
+    urlLabel.style.display = embedded ? "none" : "";
+    // Only show local embedded previews; existing URL-based quotes still work.
+    preview.style.display = embedded ? "block" : "none";
+    if (embedded) preview.src = field.value;
+    else preview.removeAttribute("src");
+    remove.style.display = field.value ? "" : "none";
+    message.textContent = embedded ? "Image embedded — ready to include in your quote." : "";
+  };
+  field.addEventListener("input", refresh);
+  remove.addEventListener("click", () => {
+    revision++;
+    delete item.dataset.imagePending;
+    upload.disabled = false;
+    field.disabled = false;
+    upload.value = "";
+    field.value = "";
+    refresh();
+  });
+  upload.addEventListener("change", async () => {
+    const file = upload.files[0];
+    if (!file) return;
+    const currentRevision = ++revision;
+    item.dataset.imagePending = "true";
+    upload.disabled = true;
+    field.disabled = true;
+    message.textContent = "Preparing image…";
+    try {
+      const image = await prepareImage(file);
+      if (currentRevision !== revision || !item.isConnected) return;
+      field.value = image;
+      refresh();
+    } catch (error) {
+      if (currentRevision !== revision || !item.isConnected) return;
+      message.textContent = error.message || "This image could not be read. Please choose another photo.";
+    } finally {
+      if (currentRevision === revision) {
+        delete item.dataset.imagePending;
+        upload.disabled = false;
+        field.disabled = false;
+        upload.value = "";
+      }
+    }
+  });
+  refresh();
+};
+
+const imagesReady = () => {
+  if (!form.querySelector('[data-image-pending="true"]')) return true;
+  setStatus("Please wait for your image to finish preparing.", true);
+  return false;
+};
+
 const addItem = (type, values = {}) => {
   const template = document.querySelector(`#${type}-template`);
   const item = template.content.firstElementChild.cloneNode(true);
@@ -63,6 +182,7 @@ const addItem = (type, values = {}) => {
     .querySelector("[data-remove]")
     .addEventListener("click", () => item.remove());
   lists[type].append(item);
+  if (type === "stay") setupImageUpload(item);
 };
 
 document.querySelectorAll("[data-add]").forEach((button) => {
@@ -90,6 +210,7 @@ const getData = () => {
 };
 
 const validate = () => {
+  if (!imagesReady()) return false;
   if (!form.reportValidity()) return false;
   if (!lists.day.children.length) {
     setStatus("Add at least one itinerary day.", true);
@@ -300,6 +421,7 @@ form.addEventListener("submit", async (event) => {
 });
 
 document.querySelector("[data-save-draft]").addEventListener("click", () => {
+  if (!imagesReady()) return;
   const data = getData();
   download(
     JSON.stringify(data, null, 2),
@@ -324,7 +446,8 @@ document
       });
       Object.keys(lists).forEach((type) => {
         lists[type].replaceChildren();
-        (data[type === "day" ? "days" : type] || []).forEach((item) =>
+        const key = { day: "days", stay: "stays", golf: "golf" }[type];
+        (data[key] || data[type] || []).forEach((item) =>
           addItem(type, item),
         );
       });
