@@ -180,7 +180,8 @@ const addItem = (type, values = {}) => {
   const template = document.querySelector(`#${type}-template`);
   const item = template.content.firstElementChild.cloneNode(true);
   item.querySelectorAll("[data-key]").forEach((field) => {
-    field.value = values[field.dataset.key] ?? "";
+    const defaults={costBasis:'group',costQuantity:'1',pricingTreatment:['day','extra'].includes(type)?'information':'included'};
+    field.value = values[field.dataset.key] ?? defaults[field.dataset.key] ?? "";
   });
   item
     .querySelector("[data-remove]")
@@ -206,9 +207,84 @@ const readItems = (type) =>
   );
 
 const itemKeys = {day:"days", stay:"stays", golf:"golf", flight:"flights", transfer:"transfers", experience:"experiences", extra:"extras"};
+const pricingLabels={flight:'Flights',stay:'Hotels',transfer:'Transfers',experience:'Excursions and itinerary',day:'Day-to-day itinerary',golf:'Golf itinerary',extra:'Additional holiday information'};
+const priceTreatment=(item,type)=>{
+ if(type==='transfer'||type==='experience') return ({'Included in holiday price':'included','Optional extra — not included':'optional','Pay locally — not included':'local'})[item.priceStatus] || 'unknown';
+ return item.pricingTreatment || (['day','extra'].includes(type)?'information':'included');
+};
+const priceMoney=(cents,currency='GBP')=>new Intl.NumberFormat('en-GB',{style:'currency',currency:['GBP','EUR','USD'].includes(currency)?currency:'GBP'}).format(cents/100);
+const calculateQuotePricing=data=>{
+ const travellers=Number(data.payingTravellers);
+ const errors=[];const sections=[];
+ if(!Number.isInteger(travellers)||travellers<1||travellers>100000) errors.push('Enter the number of paying travellers to calculate prices.');
+ const number=(value,fallback=0)=>value===''||value===undefined ? fallback : Number(value);
+ const round=value=>Math.round(value+1e-8);
+ for(const [type,key] of Object.entries(itemKeys)){
+  if(!sectionEnabled(data,type))continue;
+  const section={type,label:pricingLabels[type],included:0,optional:0,local:0,rows:[]};
+  (data[key]||[]).forEach((item,index)=>{
+   const treatment=priceTreatment(item,type);const prefix=section.label+' entry '+(index+1)+': ';
+   const entered=item.baseCost!==undefined && String(item.baseCost).trim()!=='';
+   const row={index,treatment,entered,cents:0};section.rows.push(row);
+   if(treatment==='information')return;
+   if(treatment==='unknown'){errors.push(prefix+'choose a price treatment.');return;}
+   if(!entered){errors.push(prefix+'enter a base cost (0 for free), or use information-only where available.');return;}
+   const base=number(item.baseCost),percent=number(item.markupPercent),fixed=number(item.markupAmount);
+   const basis=item.costBasis||'group';
+   const quantity=basis==='person'?travellers:basis==='unit'?number(item.costQuantity,1):1;
+   if(!['group','person','unit'].includes(basis)||![base,percent,fixed,quantity].every(Number.isFinite)||base<0||base>10000000||percent<0||percent>10000||fixed<0||fixed>10000000||!Number.isInteger(quantity)||quantity<1||quantity>100000){errors.push(prefix+'check cost, quantity and markup values.');return;}
+   const extended=round(base*100)*quantity;
+   row.cents=extended+round(extended*percent/100)+round(fixed*100);
+   if(!Number.isSafeInteger(row.cents)){errors.push(prefix+'amount is too large.');return;}
+   section[treatment]+=row.cents;
+  });
+  sections.push(section);
+ }
+ sections.sort((a,b)=>Object.keys(pricingLabels).indexOf(a.type)-Object.keys(pricingLabels).indexOf(b.type));
+ const total=sections.reduce((sum,s)=>sum+s.included,0);
+ if(!Number.isSafeInteger(total))errors.push('The quote total is too large.');
+ return {sections,total,perPerson:travellers>0?round(total/travellers):0,errors};
+};
+const renderPricingTable=(pricing,currency)=>'<table class="pricing-breakdown"><thead><tr><th scope="col">Section</th><th scope="col">Included total</th></tr></thead><tbody>'+pricing.sections.filter(section=>section.rows.some(row=>row.treatment==='included'&&row.entered)).map(section=>'<tr><td>'+htmlEscape(section.label)+'</td><td>'+priceMoney(section.included,currency)+'</td></tr>').join('')+'</tbody></table>';
+const refreshPricing=()=>{
+ const automatic=form.elements.pricingMode.value==='automatic';
+ form.elements.payingTravellers.required=automatic;
+ form.elements.payingTravellers.disabled=!automatic;
+ for(const name of ['perPerson','totalPrice'])form.elements[name].readOnly=automatic;
+ const data=getData();const pricing=calculateQuotePricing(data);
+ document.querySelectorAll('[data-item]').forEach(item=>{
+  const type=item.dataset.item;const rowIndex=[...lists[type].children].indexOf(item);
+  const row=pricing.sections.find(section=>section.type===type)?.rows[rowIndex];
+  const output=item.querySelector('[data-entry-price]');
+  if(output)output.textContent=!automatic?'Automatic calculation is off.':row?.treatment==='information'?'Information only — excluded from price.':row?.entered?'Entry selling price: '+priceMoney(row.cents,data.currency)+' ('+({included:'included',optional:'optional extra',local:'pay locally',unknown:'choose price treatment'})[row.treatment]+')':'Enter a base cost to calculate this entry.';
+ });
+ const totals=document.querySelector('[data-pricing-totals]');
+ if(!automatic){totals.textContent='Manual pricing: enter the total and per-person price yourself. Entry costs and markups are retained.';return;}
+ form.elements.totalPrice.value=pricing.errors.length?'':priceMoney(pricing.total,data.currency);
+ form.elements.perPerson.value=pricing.errors.length?'':priceMoney(pricing.perPerson,data.currency);
+ totals.innerHTML=renderPricingTable(pricing,data.currency)+(pricing.errors.length?'<p class="pricing-warning">'+htmlEscape(pricing.errors[0])+' Totals are incomplete until all selected entries are priced.</p>':'<p><strong>Total: '+priceMoney(pricing.total,data.currency)+' · Average per person: '+priceMoney(pricing.perPerson,data.currency)+'</strong></p>')+pricing.sections.filter(s=>s.optional||s.local).map(s=>'<p>'+htmlEscape(s.label)+' — excluded from total: optional '+priceMoney(s.optional,data.currency)+', pay locally '+priceMoney(s.local,data.currency)+'</p>').join('');
+};
+const priceQuoteForClient=data=>{
+ if(data.pricingMode!=='automatic')return data;
+ const pricing=calculateQuotePricing(data);
+ if(pricing.errors.length)throw new Error(pricing.errors[0]);
+ const result={...data,totalPrice:priceMoney(pricing.total,data.currency),perPerson:priceMoney(pricing.perPerson,data.currency)};
+ for(const section of pricing.sections){
+  const key=itemKeys[section.type];
+  result[key]=(data[key]||[]).map((item,index)=>{
+   const row=section.rows[index];
+   if(!row.entered||row.treatment==='information')return item;
+   const price=priceMoney(row.cents,data.currency)+' for the group';
+   return {...item,price,clientSellingPrice:price,clientPriceTreatment:({included:'Included in holiday price',optional:'Optional extra — not included',local:'Pay locally — not included'})[row.treatment]};
+  });
+ }
+ return result;
+};
+const renderSellingPrice=item=>item.clientSellingPrice?'<p class="quote-selling-price">'+htmlEscape(item.clientSellingPrice)+'<br>'+htmlEscape(item.clientPriceTreatment)+'</p>':'';
+
 const getData = () => {
   const fields = Object.fromEntries([...form.querySelectorAll('[name]')].map(field => [field.name,field.value.trim()]));
-  return {...fields, schemaVersion:2, enabledSections:Object.fromEntries([...document.querySelectorAll('[data-enable]')].map(el=>[el.dataset.enable,el.checked])), ...Object.fromEntries(Object.entries(itemKeys).map(([type,key])=>[key,readItems(type)]))};
+  return {...fields, schemaVersion:3, enabledSections:Object.fromEntries([...document.querySelectorAll('[data-enable]')].map(el=>[el.dataset.enable,el.checked])), ...Object.fromEntries(Object.entries(itemKeys).map(([type,key])=>[key,readItems(type)]))};
 };
 const syncSections = () => {
  document.querySelectorAll('[data-section]').forEach(section=>{
@@ -227,6 +303,9 @@ const applyPreset = () => {
 form.elements.quoteType.addEventListener('change',applyPreset);
 document.querySelectorAll('[data-enable]').forEach(el=>el.addEventListener('change',syncSections));
 const validate = () => {
+ refreshPricing();
+ const pricing=calculateQuotePricing(getData());
+ if(form.elements.pricingMode.value==="automatic" && pricing.errors.length){setStatus(pricing.errors[0],true);return false;}
  if (!imagesReady() || !form.reportValidity()) return false;
  for(const type of ['flight','stay','transfer','experience','day','golf','extra']) {
   if(document.querySelector('[data-enable="'+type+'"]').checked && !lists[type].children.length){setStatus('Add an entry to '+{"stay":"Hotels","day":"Day-to-day itinerary","flight":"Flights","transfer":"Transfers","experience":"Excursions & activities","golf":"Golf itinerary","extra":"Additional holiday information"}[type]+' or switch that section off.',true);return false;}
@@ -250,7 +329,7 @@ const renderDays = (days) =>
     .map(
       (item) => `<div class="quote-day">
         <div><span>Day ${htmlEscape(item.day)}</span><strong>${htmlEscape(formatDate(item.date))}</strong></div>
-        <div><h3>${htmlEscape(item.title)}</h3><p>${htmlEscape(item.details)}</p>${renderWebsiteLink(item,"day")}</div>
+        <div><h3>${htmlEscape(item.title)}</h3><p>${htmlEscape(item.details)}</p>${renderWebsiteLink(item,"day")}${renderSellingPrice(item)}</div>
       </div>`,
     )
     .join("");
@@ -265,7 +344,7 @@ const renderStays = (stays) =>
         <div>
           <p class="eyebrow">${htmlEscape(item.nights)} nights · ${htmlEscape(item.location)}</p>
           <h3>${htmlEscape(item.hotel)}</h3>
-          <p>${htmlEscape(item.description)}</p>${renderWebsiteLink(item,"stay")}
+          <p>${htmlEscape(item.description)}</p>${renderWebsiteLink(item,"stay")}${renderSellingPrice(item)}
           <dl class="quote-list">
             <div><dt>Room</dt><dd>${htmlEscape(item.room)}</dd></div>
             <div><dt>Board</dt><dd>${htmlEscape(item.board)}</dd></div>
@@ -284,7 +363,7 @@ const renderGolf = (rounds) =>
       const date = shortDate(item.date);
       return `<div class="golf-round">
         <div class="golf-round__date"><span>${date.day}</span>${date.month}</div>
-        <div><h3>${htmlEscape(item.course)}</h3><p>${htmlEscape(item.courseDetails)}</p>${renderWebsiteLink(item,"golf")}</div>
+        <div><h3>${htmlEscape(item.course)}</h3><p>${htmlEscape(item.courseDetails)}</p>${renderWebsiteLink(item,"golf")}${renderSellingPrice(item)}</div>
         <dl><div><dt>Tee time</dt><dd>${htmlEscape(item.teeTime)}</dd></div><div><dt>Included</dt><dd>${htmlEscape(item.included)}</dd></div></dl>
       </div>`;
     })
@@ -296,7 +375,7 @@ const loadQuoteAssets = async () => {
 };
 const sectionEnabled=(data,type)=>type==='stay' && data.enabledSections?.stay===undefined ? true : data.enabledSections ? data.enabledSections[type]===true : type==='day'||type==='golf';
 const packageSchemas={"flight":[["direction","Journey","text",["Outbound","Return","Connecting","Internal"]],["airline","Airline","text",null,true],["flightNumber","Flight number"],["from","Departure airport / terminal","text",null,true],["to","Arrival airport / terminal","text",null,true],["departureDate","Departure date","date"],["departureTime","Departure time (local)","time"],["arrivalDate","Arrival date","date"],["arrivalTime","Arrival time (local)","time"],["cabin","Cabin","text",["Economy","Premium economy","Business","First"]],["baggage","Baggage allowance"],["notes","Flight notes / connections","textarea"]],"transfer":[["purpose","Transfer type","text",["Airport arrival","Airport departure","Return airport transfer","Hotel to hotel","Station transfer","Port transfer","Excursion transfer","Other"]],["transport","Transport","text",["Private car","Private executive car","Private minivan","Shared shuttle","Coach","Train","Bullet train","Ferry / boat","Domestic flight","Car hire","Other"],true],["customTransport","Other transport / vehicle details"],["from","Pick-up location","text",null,true],["to","Drop-off location","text",null,true],["date","Date","date"],["time","Pick-up time (local)","time"],["duration","Estimated journey time"],["passengers","Passengers / luggage"],["priceStatus","Price treatment","text",["Included in holiday price","Optional extra — not included","Pay locally — not included"],true],["price","Extra price / currency / per person or vehicle"],["notes","Meeting point / return details / accessibility","textarea"]],"experience":[["title","Excursion / activity name","text",null,true],["category","Experience type","text",["Sightseeing tour","Cultural / heritage","Food / wine","Boat trip / cruise","Adventure / outdoors","Wildlife / nature","Theme park / attraction","Wellness / spa","Sport / water sports","Shopping","Other"],true],["customType","Other type / further detail"],["service","Service","text",["Private guided","Shared / group guided","Self-guided","Admission only"]],["location","Location"],["date","Date","date"],["time","Start time (local)","time"],["duration","Duration"],["priceStatus","Price treatment","text",["Included in holiday price","Optional extra — not included","Pay locally — not included"],true],["price","Extra price / currency / per person or group"],["included","What is included","textarea"],["notes","Description / pick-up / restrictions","textarea"]],"extra":[["title","Section heading","text",null,true],["details","Holiday information","textarea",null,true]]};
-const renderPackageItems=(type,items)=>items.map(item=>'<article class="package-card"><h3>'+htmlEscape(item.title || (type==='flight' ? [item.direction,item.airline,item.flightNumber].filter(Boolean).join(' · ') : type==='transfer' ? [item.purpose,item.transport].filter(Boolean).join(' · ') : 'Holiday information'))+'</h3><dl>'+packageSchemas[type].filter(([key])=>item[key] && key!=='title').map(([key,label,format])=>'<div><dt>'+htmlEscape(label)+'</dt><dd>'+htmlEscape(format==='date'?formatDate(item[key]):item[key])+'</dd></div>').join('')+'</dl>'+renderWebsiteLink(item,type)+'</article>').join('');
+const renderPackageItems=(type,items)=>items.map(item=>'<article class="package-card"><h3>'+htmlEscape(item.title || (type==='flight' ? [item.direction,item.airline,item.flightNumber].filter(Boolean).join(' · ') : type==='transfer' ? [item.purpose,item.transport].filter(Boolean).join(' · ') : 'Holiday information'))+'</h3><dl>'+packageSchemas[type].filter(([key])=>item[key] && key!=='title' && !(key==='price' && item.clientSellingPrice)).map(([key,label,format])=>'<div><dt>'+htmlEscape(label)+'</dt><dd>'+htmlEscape(format==='date'?formatDate(item[key]):item[key])+'</dd></div>').join('')+'</dl>'+renderWebsiteLink(item,type)+renderSellingPrice(item)+'</article>').join('');
 const renderSections=data=>{
  const sections=[];
  if(sectionEnabled(data,'flight')&&data.flights.length) sections.push(['Getting there','Flights',renderPackageItems('flight',data.flights)]);
@@ -339,13 +418,19 @@ const journeySummaryFacts = (data) => {
 };
 const renderJourneySummary=data=>journeySummaryFacts(data).map(({label,value})=>'<div class="quote-fact"><span>'+htmlEscape(label)+'</span><strong>'+htmlEscape(value)+'</strong></div>').join('');
 const refreshJourneySummary=()=>{
+ refreshPricing();
  const preview=document.querySelector('[data-summary-preview]');
- if(preview) preview.innerHTML=renderJourneySummary(getData());
+ if(preview) {
+  const data=getData();
+  const ready=data.pricingMode==='automatic' && !calculateQuotePricing(data).errors.length;
+  preview.innerHTML=renderJourneySummary(ready?priceQuoteForClient(data):data);
+ }
 };
 form.addEventListener('input',refreshJourneySummary);
 form.addEventListener('change',refreshJourneySummary);
 
 const generateHtml = (data, assets) => {
+  data = priceQuoteForClient(data);
   const inclusions = data.inclusions
     .split("\n")
     .map((item) => item.trim())
@@ -376,6 +461,7 @@ const generateHtml = (data, assets) => {
       <div class="quote-section-heading"><div><p class="eyebrow">At a glance</p><h2>Your journey</h2></div><button class="quote-print" type="button" data-print-quote>Print or save as PDF</button></div>
       <div class="quote-facts">${renderJourneySummary(data)}</div>
       <div class="quote-price"><div><span>Price per person</span><strong>${htmlEscape(data.perPerson)}</strong><small>Per person, based on the stated occupancy</small></div><div class="quote-price__total"><span>Total holiday price</span><strong>${htmlEscape(data.totalPrice)}</strong><small>Includes stated inclusions; excludes optional extras and local payments</small></div></div>
+      ${data.pricingMode === "automatic" ? `<div class="quote-inclusions"><p class="eyebrow">Included section totals</p>${renderPricingTable(calculateQuotePricing(data), data.currency)}</div>` : ""}
       ${inclusions ? `<div class="quote-inclusions"><p class="eyebrow">Included in your proposal</p><ul>${inclusions}</ul></div>` : ""}
     </div></section>
     <section class="quote-details section"><div class="container"><div class="quote-section-heading"><div><p class="eyebrow">The complete proposal</p><h2>Explore every detail</h2></div><p>Select each section to view the full arrangements.</p></div>
@@ -480,6 +566,8 @@ document
       if(!data || typeof data!=='object' || Array.isArray(data) || !('stays' in data || 'stay' in data)) throw new Error('Invalid draft');
       Object.entries(itemKeys).forEach(([type,key])=>{const items=data[key]||data[type]||[];if(!Array.isArray(items)||items.some(item=>!item||typeof item!=='object'||Object.values(item).some(value=>typeof value!=='string'&&typeof value!=='number')))throw new Error('Invalid entries');});
       form.reset();
+      // Preserve older manually priced drafts until the agent opts into calculation.
+      if(!data.pricingMode) form.elements.pricingMode.value='manual';
       form.querySelectorAll('[name]').forEach(field=>{if(typeof data[field.name]==='string') field.value=data[field.name];});
       if(!data.quoteType) form.elements.quoteType.value=data.golf?.length||data.golfSummary?'golf':'custom';
       document.querySelectorAll('[data-enable]').forEach(el=>{const type=el.dataset.enable;el.checked=type==='stay' && data.enabledSections?.stay===undefined ? true : data.enabledSections ? data.enabledSections[type]===true : Boolean((data[itemKeys[type]]||data[type]||[]).length || type==='golf'&&(data.golfNote||data.golfSummary));});
