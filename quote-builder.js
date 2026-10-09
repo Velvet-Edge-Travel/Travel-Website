@@ -60,7 +60,7 @@ const setStatus = (message, isError = false) => {
 // Keep image data in the existing image field so HTML exports and JSON drafts
 // remain self-contained, including when an older draft is loaded.
 let imageControlId = 0;
-const prepareImage = async (file) => {
+const prepareImage = async (file, maxDimension = 1600) => {
   if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
     throw new Error("Please choose a JPG, PNG or WebP image.");
   }
@@ -72,7 +72,7 @@ const prepareImage = async (file) => {
     const image = new Image();
     image.src = url;
     await image.decode();
-    const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+    const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
     canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
@@ -170,10 +170,91 @@ const setupImageUpload = (item) => {
   refresh();
 };
 
+let coverRevision=0;
+const validCoverImage=value=>/^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(value||'');
+const refreshCover=()=>{
+ const show=form.elements.coverStyle.value==='photo';
+ document.querySelector('[data-cover-upload]').hidden=!show;
+ const preview=document.querySelector('[data-cover-preview]');
+ preview.hidden=!validCoverImage(form.elements.coverImage.value);
+ if(!preview.hidden)preview.src=form.elements.coverImage.value;else preview.removeAttribute('src');
+ preview.style.objectPosition=form.elements.coverPosition.value||'center';
+};
+const setupCover=()=>{
+ const upload=document.querySelector('#cover-file');
+ const container=document.querySelector('[data-cover-controls]');
+ const message=document.querySelector('[data-cover-status]');
+ form.elements.coverStyle.addEventListener('change',refreshCover);
+ form.elements.coverPosition.addEventListener('change',refreshCover);
+ document.querySelector('[data-remove-cover]').addEventListener('click',()=>{
+  coverRevision++;delete container.dataset.imagePending;upload.disabled=false;upload.value='';form.elements.coverImage.value='';form.elements.coverStyle.value='logo';message.textContent='';refreshCover();
+ });
+ upload.addEventListener('change',async()=>{
+  const file=upload.files[0];if(!file)return;
+  const revision=++coverRevision;container.dataset.imagePending='true';upload.disabled=true;message.textContent='Preparing cover image…';
+  try{const value=await prepareImage(file,2400);if(revision!==coverRevision)return;form.elements.coverImage.value=value;message.textContent='Cover image embedded in your quote and draft.';refreshCover();}
+  catch(error){if(revision===coverRevision)message.textContent=error.message||'The image could not be loaded.';}
+  finally{if(revision===coverRevision){delete container.dataset.imagePending;upload.disabled=false;upload.value='';}}
+ });
+ refreshCover();
+};
+const renderCover=data=>{
+ if(data.coverStyle==='photo'&&validCoverImage(data.coverImage)){
+  const position=['top','bottom','center'].includes(data.coverPosition)?data.coverPosition:'center';
+  return '<img class="quote-cover" src="'+attributeEscape(data.coverImage)+'" alt="" style="object-position:'+position+'">';
+ }
+ const logo=JSON.parse(document.querySelector('#quote-assets').textContent).logo;
+ return '<img class="quote-cover quote-cover--logo" src="'+attributeEscape('data:image/svg+xml,'+encodeURIComponent(logo))+'" alt="">';
+};
+
 const imagesReady = () => {
   if (!form.querySelector('[data-image-pending="true"]')) return true;
   setStatus("Please wait for your image to finish preparing.", true);
   return false;
+};
+
+const parseFlightStops=value=>{
+ if(!value)return [];
+ try {
+  const stops=JSON.parse(value);
+  if(!Array.isArray(stops))return [];
+  return stops.filter(stop=>stop&&typeof stop==='object'&&!Array.isArray(stop)).map(stop=>Object.fromEntries(Object.entries(stop).filter(([key,value])=>['kind','airport','arrivalDate','arrivalTime','departureDate','departureTime','duration','airline','flightNumber','terminal','notes'].includes(key)&&typeof value==='string')));
+ }catch{return [];}
+};
+const setupFlightStops=item=>{
+ const list=item.querySelector('[data-stop-list]');
+ const field=item.querySelector('[data-key="flightStops"]');
+ const save=()=>{
+  const stops=[...list.children].map((stop,index)=>{
+   stop.querySelector('[data-stop-heading]').textContent='Stop '+(index+1);
+   return Object.fromEntries([...stop.querySelectorAll('[data-stop-key]')].map(input=>[input.dataset.stopKey,input.value.trim()]));
+  });
+  field.value=stops.length?JSON.stringify(stops):'';
+ };
+ const addStop=(values={})=>{
+  const stop=document.querySelector('#flight-stop-template').content.firstElementChild.cloneNode(true);
+  stop.querySelectorAll('[data-stop-key]').forEach(input=>{
+   input.value=values[input.dataset.stopKey]??(input.dataset.stopKey==='kind'?'Transit / connection':'');
+   input.id='flight-stop-'+(++imageControlId);
+   input.parentElement.querySelector('label').htmlFor=input.id;
+  });
+  stop.querySelector('[data-remove-stop]').addEventListener('click',()=>{stop.remove();save();refreshJourneySummary();});
+  list.append(stop);save();
+ };
+ const restored=parseFlightStops(field.value);
+ restored.forEach(addStop);
+ item.querySelector('[data-add-stop]').addEventListener('click',()=>{addStop();syncSections();});
+ list.addEventListener('input',save);
+ list.addEventListener('change',save);
+};
+const renderFlightStops=item=>{
+ const stops=parseFlightStops(item.flightStops);
+ if(!stops.length)return '';
+ const date=value=>/^\d{4}-\d{2}-\d{2}$/.test(value||'')&&!Number.isNaN(Date.parse(value))?formatDate(value):value||'';
+ return '<div><h4>Stops / transit</h4><ol class="quote-flight-stops">'+stops.map(stop=>{
+  const details=[['Type',stop.kind],['Arrival (local)',[date(stop.arrivalDate),stop.arrivalTime].filter(Boolean).join(' · ')],['Onward departure (local)',[date(stop.departureDate),stop.departureTime].filter(Boolean).join(' · ')],['Stop duration',stop.duration],['Onward flight',[stop.airline,stop.flightNumber].filter(Boolean).join(' · ')],['Terminal / airport change',stop.terminal],['Notes',stop.notes]];
+  return '<li><h4>'+htmlEscape(stop.airport)+'</h4><dl>'+details.filter(([,value])=>value).map(([label,value])=>'<div><dt>'+htmlEscape(label)+'</dt><dd>'+htmlEscape(value)+'</dd></div>').join('')+'</dl></li>';
+ }).join('')+'</ol></div>';
 };
 
 const addItem = (type, values = {}) => {
@@ -188,6 +269,7 @@ const addItem = (type, values = {}) => {
     .addEventListener("click", () => {item.remove(); refreshJourneySummary();});
   lists[type].append(item);
   if (type === "stay") setupImageUpload(item);
+  if (type === "flight") setupFlightStops(item);
   item.querySelectorAll("[data-key]").forEach((field,index)=>{if(!field.id) field.id = `entry-${++imageControlId}-${index}`; const label=field.parentElement.querySelector("label"); if(label) label.htmlFor=field.id;});
   syncSections();
 };
@@ -303,6 +385,7 @@ const applyPreset = () => {
 form.elements.quoteType.addEventListener('change',applyPreset);
 document.querySelectorAll('[data-enable]').forEach(el=>el.addEventListener('change',syncSections));
 const validate = () => {
+ if(form.elements.coverStyle.value==='photo' && !validCoverImage(form.elements.coverImage.value)){setStatus("Upload a cover image or choose the Velvet Edge Travel logo background.",true);return false;}
  refreshPricing();
  const pricing=calculateQuotePricing(getData());
  if(form.elements.pricingMode.value==="automatic" && pricing.errors.length){setStatus(pricing.errors[0],true);return false;}
@@ -375,7 +458,7 @@ const loadQuoteAssets = async () => {
 };
 const sectionEnabled=(data,type)=>type==='stay' && data.enabledSections?.stay===undefined ? true : data.enabledSections ? data.enabledSections[type]===true : type==='day'||type==='golf';
 const packageSchemas={"flight":[["direction","Journey","text",["Outbound","Return","Connecting","Internal"]],["airline","Airline","text",null,true],["flightNumber","Flight number"],["from","Departure airport / terminal","text",null,true],["to","Arrival airport / terminal","text",null,true],["departureDate","Departure date","date"],["departureTime","Departure time (local)","time"],["arrivalDate","Arrival date","date"],["arrivalTime","Arrival time (local)","time"],["cabin","Cabin","text",["Economy","Premium economy","Business","First"]],["baggage","Baggage allowance"],["notes","Flight notes / connections","textarea"]],"transfer":[["purpose","Transfer type","text",["Airport arrival","Airport departure","Return airport transfer","Hotel to hotel","Station transfer","Port transfer","Excursion transfer","Other"]],["transport","Transport","text",["Private car","Private executive car","Private minivan","Shared shuttle","Coach","Train","Bullet train","Ferry / boat","Domestic flight","Car hire","Other"],true],["customTransport","Other transport / vehicle details"],["from","Pick-up location","text",null,true],["to","Drop-off location","text",null,true],["date","Date","date"],["time","Pick-up time (local)","time"],["duration","Estimated journey time"],["passengers","Passengers / luggage"],["priceStatus","Price treatment","text",["Included in holiday price","Optional extra — not included","Pay locally — not included"],true],["price","Extra price / currency / per person or vehicle"],["notes","Meeting point / return details / accessibility","textarea"]],"experience":[["title","Excursion / activity name","text",null,true],["category","Experience type","text",["Sightseeing tour","Cultural / heritage","Food / wine","Boat trip / cruise","Adventure / outdoors","Wildlife / nature","Theme park / attraction","Wellness / spa","Sport / water sports","Shopping","Other"],true],["customType","Other type / further detail"],["service","Service","text",["Private guided","Shared / group guided","Self-guided","Admission only"]],["location","Location"],["date","Date","date"],["time","Start time (local)","time"],["duration","Duration"],["priceStatus","Price treatment","text",["Included in holiday price","Optional extra — not included","Pay locally — not included"],true],["price","Extra price / currency / per person or group"],["included","What is included","textarea"],["notes","Description / pick-up / restrictions","textarea"]],"extra":[["title","Section heading","text",null,true],["details","Holiday information","textarea",null,true]]};
-const renderPackageItems=(type,items)=>items.map(item=>'<article class="package-card"><h3>'+htmlEscape(item.title || (type==='flight' ? [item.direction,item.airline,item.flightNumber].filter(Boolean).join(' · ') : type==='transfer' ? [item.purpose,item.transport].filter(Boolean).join(' · ') : 'Holiday information'))+'</h3><dl>'+packageSchemas[type].filter(([key])=>item[key] && key!=='title' && !(key==='price' && item.clientSellingPrice)).map(([key,label,format])=>'<div><dt>'+htmlEscape(label)+'</dt><dd>'+htmlEscape(format==='date'?formatDate(item[key]):item[key])+'</dd></div>').join('')+'</dl>'+renderWebsiteLink(item,type)+renderSellingPrice(item)+'</article>').join('');
+const renderPackageItems=(type,items)=>items.map(item=>'<article class="package-card"><h3>'+htmlEscape(item.title || (type==='flight' ? [item.direction,item.airline,item.flightNumber].filter(Boolean).join(' · ') : type==='transfer' ? [item.purpose,item.transport].filter(Boolean).join(' · ') : 'Holiday information'))+'</h3><dl>'+packageSchemas[type].filter(([key])=>item[key] && key!=='title' && !(key==='price' && item.clientSellingPrice)).map(([key,label,format])=>'<div><dt>'+htmlEscape(label)+'</dt><dd>'+htmlEscape(format==='date'?formatDate(item[key]):item[key])+'</dd></div>').join('')+'</dl>'+(type==='flight'?renderFlightStops(item):'')+renderWebsiteLink(item,type)+renderSellingPrice(item)+'</article>').join('');
 const renderSections=data=>{
  const sections=[];
  if(sectionEnabled(data,'flight')&&data.flights.length) sections.push(['Getting there','Flights',renderPackageItems('flight',data.flights)]);
@@ -403,7 +486,7 @@ const journeySummaryFacts = (data) => {
  add('Arrival date',data.arrival?formatDate(data.arrival):'');
  add('Duration',data.nights?data.nights+' nights':'');
  add('Total guests',data.guests);
- if(sectionEnabled(data,'flight')) add('Flights',data.flightSummary||items('flights').map(item=>join([item.direction,item.airline,[item.from,item.to].filter(Boolean).join(' → ')])).filter(Boolean).join('\n')||'To be confirmed');
+ if(sectionEnabled(data,'flight')) add('Flights',data.flightSummary||items('flights').map(item=>join([item.direction,item.airline,[item.from,...parseFlightStops(item.flightStops).map(stop=>stop.airport),item.to].filter(Boolean).join(' → ')])).filter(Boolean).join('\n')||'To be confirmed');
  if(sectionEnabled(data,'stay')){
    add('Hotels',data.hotel||join(items('stays').map(item=>item.hotel))||'To be confirmed');
    add('Rooms',data.room||join(items('stays').map(item=>item.room)));
@@ -456,7 +539,7 @@ const generateHtml = (data, assets) => {
     <div class="quote-header__ref"><span>Proposal reference</span><strong>${safeReference}</strong></div>
   </div></header>
   <main>
-    <section class="quote-intro"><div class="container quote-intro__grid"><div><p class="eyebrow">Your private travel proposal</p><h1>${htmlEscape(data.title)}</h1><p class="quote-intro__copy">${htmlEscape(data.intro)}</p></div><div class="quote-intro__aside"><span>Prepared especially for</span><strong>${htmlEscape(data.clientName)}</strong><span>Prepared on</span><strong>${htmlEscape(formatDate(data.preparedDate))}</strong><span>Proposal valid until</span><strong>${htmlEscape(formatDate(data.validUntil))}</strong></div></div></section>
+    <section class="quote-intro">${renderCover(data)}<div class="container quote-intro__grid"><div><p class="eyebrow">Your private travel proposal</p><h1>${htmlEscape(data.title)}</h1><p class="quote-intro__copy">${htmlEscape(data.intro)}</p></div><div class="quote-intro__aside"><span>Prepared especially for</span><strong>${htmlEscape(data.clientName)}</strong><span>Prepared on</span><strong>${htmlEscape(formatDate(data.preparedDate))}</strong><span>Proposal valid until</span><strong>${htmlEscape(formatDate(data.validUntil))}</strong></div></div></section>
     <section class="quote-summary section--tight"><div class="container">
       <div class="quote-section-heading"><div><p class="eyebrow">At a glance</p><h2>Your journey</h2></div><button class="quote-print" type="button" data-print-quote>Print or save as PDF</button></div>
       <div class="quote-facts">${renderJourneySummary(data)}</div>
@@ -561,10 +644,12 @@ document
   .addEventListener("change", async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+    if (!imagesReady()) { event.target.value = ""; return; }
     try {
       const data = JSON.parse(await file.text());
       if(!data || typeof data!=='object' || Array.isArray(data) || !('stays' in data || 'stay' in data)) throw new Error('Invalid draft');
       Object.entries(itemKeys).forEach(([type,key])=>{const items=data[key]||data[type]||[];if(!Array.isArray(items)||items.some(item=>!item||typeof item!=='object'||Object.values(item).some(value=>typeof value!=='string'&&typeof value!=='number')))throw new Error('Invalid entries');});
+      coverRevision++;
       form.reset();
       // Preserve older manually priced drafts until the agent opts into calculation.
       if(!data.pricingMode) form.elements.pricingMode.value='manual';
@@ -573,6 +658,7 @@ document
       document.querySelectorAll('[data-enable]').forEach(el=>{const type=el.dataset.enable;el.checked=type==='stay' && data.enabledSections?.stay===undefined ? true : data.enabledSections ? data.enabledSections[type]===true : Boolean((data[itemKeys[type]]||data[type]||[]).length || type==='golf'&&(data.golfNote||data.golfSummary));});
       Object.entries(itemKeys).forEach(([type,key])=>{lists[type].replaceChildren();(data[key]||data[type]||[]).forEach(item=>addItem(type,item));});
       syncSections();
+      refreshCover();
       updateExpectedLink();
       setStatus("Editable draft loaded.");
     } catch {
@@ -586,6 +672,7 @@ const validUntil = new Date(today);
 validUntil.setDate(validUntil.getDate() + 14);
 form.elements.preparedDate.value = today.toISOString().slice(0, 10);
 form.elements.validUntil.value = validUntil.toISOString().slice(0, 10);
+setupCover();
 applyPreset();
 addItem("stay");
 updateExpectedLink();
