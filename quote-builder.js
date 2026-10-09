@@ -184,7 +184,7 @@ const addItem = (type, values = {}) => {
   });
   item
     .querySelector("[data-remove]")
-    .addEventListener("click", () => item.remove());
+    .addEventListener("click", () => {item.remove(); refreshJourneySummary();});
   lists[type].append(item);
   if (type === "stay") setupImageUpload(item);
   item.querySelectorAll("[data-key]").forEach((field,index)=>{if(!field.id) field.id = `entry-${++imageControlId}-${index}`; const label=field.parentElement.querySelector("label"); if(label) label.htmlFor=field.id;});
@@ -217,6 +217,7 @@ const syncSections = () => {
   section.querySelectorAll('input,select,textarea,button').forEach(field=>{field.disabled=!enabled || Boolean(field.closest('[data-image-pending="true"]'));});
  });
  [...document.querySelectorAll('.builder-panel')].filter(panel=>!panel.hidden).forEach((panel,index)=>{panel.querySelector('.builder-panel__heading > span').textContent=String(index+1).padStart(2,'0');});
+ refreshJourneySummary();
 };
 const applyPreset = () => {
  const presets={package:['flight','stay'],touring:['flight','stay','transfer','experience','day'],golf:['flight','stay','transfer','day','golf'],hotel:['stay'],custom:['stay','extra']};
@@ -309,6 +310,41 @@ const renderSections=data=>{
  if(notes) sections.push(['Before you book','Important information',notes]);
  return sections.map(([label,title,content],i)=>'<details class="quote-accordion"'+(i===0?' open':'')+'><summary><span class="quote-accordion__number">'+String(i+1).padStart(2,'0')+'</span><span><small>'+label+'</small>'+title+'</span><i aria-hidden="true"></i></summary><div class="quote-accordion__content">'+content+'</div></details>').join('');
 };
+
+const journeySummaryFacts = (data) => {
+ const facts=[];
+ const add=(label,value)=>{if(value) facts.push({label,value:String(value)});};
+ const join=values=>[...new Set(values.filter(Boolean))].join(' · ');
+ const items=key=>Array.isArray(data[key])?data[key]:[];
+ const pricedSummary=(rows,describe)=>rows.map(item=>{
+   const detail=describe(item);
+   return [detail,item.priceStatus||'Price inclusion to be confirmed',item.price].filter(Boolean).join(' — ');
+ }).join('\n');
+ add('Destination',data.location);
+ add('Arrival date',data.arrival?formatDate(data.arrival):'');
+ add('Duration',data.nights?data.nights+' nights':'');
+ add('Total guests',data.guests);
+ if(sectionEnabled(data,'flight')) add('Flights',data.flightSummary||items('flights').map(item=>join([item.direction,item.airline,[item.from,item.to].filter(Boolean).join(' → ')])).filter(Boolean).join('\n')||'To be confirmed');
+ if(sectionEnabled(data,'stay')){
+   add('Hotels',data.hotel||join(items('stays').map(item=>item.hotel))||'To be confirmed');
+   add('Rooms',data.room||join(items('stays').map(item=>item.room)));
+   add('Board basis',data.board||join(items('stays').map(item=>item.board)));
+ }
+ if(sectionEnabled(data,'transfer')) add('Transfers',data.transferSummary||pricedSummary(items('transfers'),item=>join([item.transport,[item.from,item.to].filter(Boolean).join(' → ')]))||'To be confirmed');
+ if(sectionEnabled(data,'experience')) add('Excursions and itinerary',data.experienceSummary||pricedSummary(items('experiences'),item=>item.title||item.category)||'To be confirmed');
+ if(sectionEnabled(data,'day')) add('Day-to-day itinerary',data.daySummary||items('days').map(item=>[item.day?'Day '+item.day:'',item.title].filter(Boolean).join(': ')).filter(Boolean).join('\n')||'To be confirmed');
+ if(sectionEnabled(data,'golf')) add('Golf courses',data.golfSummary||join(items('golf').map(item=>item.course))||'To be confirmed');
+ if(sectionEnabled(data,'extra')) add('Additional holiday information',data.extraSummary||join(items('extras').map(item=>item.title))||'See full details below');
+ return facts;
+};
+const renderJourneySummary=data=>journeySummaryFacts(data).map(({label,value})=>'<div class="quote-fact"><span>'+htmlEscape(label)+'</span><strong>'+htmlEscape(value)+'</strong></div>').join('');
+const refreshJourneySummary=()=>{
+ const preview=document.querySelector('[data-summary-preview]');
+ if(preview) preview.innerHTML=renderJourneySummary(getData());
+};
+form.addEventListener('input',refreshJourneySummary);
+form.addEventListener('change',refreshJourneySummary);
+
 const generateHtml = (data, assets) => {
   const inclusions = data.inclusions
     .split("\n")
@@ -338,16 +374,7 @@ const generateHtml = (data, assets) => {
     <section class="quote-intro"><div class="container quote-intro__grid"><div><p class="eyebrow">Your private travel proposal</p><h1>${htmlEscape(data.title)}</h1><p class="quote-intro__copy">${htmlEscape(data.intro)}</p></div><div class="quote-intro__aside"><span>Prepared especially for</span><strong>${htmlEscape(data.clientName)}</strong><span>Prepared on</span><strong>${htmlEscape(formatDate(data.preparedDate))}</strong><span>Proposal valid until</span><strong>${htmlEscape(formatDate(data.validUntil))}</strong></div></div></section>
     <section class="quote-summary section--tight"><div class="container">
       <div class="quote-section-heading"><div><p class="eyebrow">At a glance</p><h2>Your journey</h2></div><button class="quote-print" type="button" data-print-quote>Print or save as PDF</button></div>
-      <div class="quote-facts">
-        ${!sectionEnabled(data,"stay") ? `<div class="quote-fact"><span>Destination</span><strong>${htmlEscape(data.location)}</strong></div>` : ""}
-        ${sectionEnabled(data,"stay") ? `<div class="quote-fact quote-fact--wide"><span>Hotel</span><strong>${htmlEscape(data.hotel)}</strong><small>${htmlEscape(data.location)}</small></div>` : ""}
-        ${sectionEnabled(data,"stay") ? `<div class="quote-fact"><span>Room</span><strong>${htmlEscape(data.room)}</strong></div>` : ""}
-        <div class="quote-fact"><span>Arrival date</span><strong>${htmlEscape(formatDate(data.arrival))}</strong></div>
-        <div class="quote-fact"><span>Duration</span><strong>${htmlEscape(data.nights)} nights</strong></div>
-        ${sectionEnabled(data,"stay") ? `<div class="quote-fact"><span>Board basis</span><strong>${htmlEscape(data.board)}</strong></div>` : ""}
-        <div class="quote-fact"><span>Total guests</span><strong>${htmlEscape(data.guests)}</strong></div>
-        ${sectionEnabled(data,"golf") && data.golfSummary ? `<div class="quote-fact quote-fact--wide"><span>Golf courses</span><strong>${htmlEscape(data.golfSummary)}</strong></div>` : ""}
-      </div>
+      <div class="quote-facts">${renderJourneySummary(data)}</div>
       <div class="quote-price"><div><span>Price per person</span><strong>${htmlEscape(data.perPerson)}</strong><small>Per person, based on the stated occupancy</small></div><div class="quote-price__total"><span>Total holiday price</span><strong>${htmlEscape(data.totalPrice)}</strong><small>Includes stated inclusions; excludes optional extras and local payments</small></div></div>
       ${inclusions ? `<div class="quote-inclusions"><p class="eyebrow">Included in your proposal</p><ul>${inclusions}</ul></div>` : ""}
     </div></section>
