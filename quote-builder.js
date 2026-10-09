@@ -1,6 +1,10 @@
 const form = document.querySelector("#quote-builder");
 const status = document.querySelector("[data-builder-status]");
 const lists = {
+  flight: document.querySelector('[data-list="flight"]'),
+  transfer: document.querySelector('[data-list="transfer"]'),
+  experience: document.querySelector('[data-list="experience"]'),
+  extra: document.querySelector('[data-list="extra"]'),
   day: document.querySelector('[data-list="day"]'),
   stay: document.querySelector('[data-list="stay"]'),
   golf: document.querySelector('[data-list="golf"]'),
@@ -183,6 +187,8 @@ const addItem = (type, values = {}) => {
     .addEventListener("click", () => item.remove());
   lists[type].append(item);
   if (type === "stay") setupImageUpload(item);
+  item.querySelectorAll("[data-key]").forEach((field,index)=>{if(!field.id) field.id = `entry-${++imageControlId}-${index}`; const label=field.parentElement.querySelector("label"); if(label) label.htmlFor=field.id;});
+  syncSections();
 };
 
 document.querySelectorAll("[data-add]").forEach((button) => {
@@ -199,30 +205,43 @@ const readItems = (type) =>
     ),
   );
 
+const itemKeys = {day:"days", stay:"stays", golf:"golf", flight:"flights", transfer:"transfers", experience:"experiences", extra:"extras"};
 const getData = () => {
-  const fields = Object.fromEntries(new FormData(form));
-  return {
-    ...fields,
-    days: readItems("day"),
-    stays: readItems("stay"),
-    golf: readItems("golf"),
-  };
+  const fields = Object.fromEntries([...form.querySelectorAll('[name]')].map(field => [field.name,field.value.trim()]));
+  return {...fields, schemaVersion:2, enabledSections:Object.fromEntries([...document.querySelectorAll('[data-enable]')].map(el=>[el.dataset.enable,el.checked])), ...Object.fromEntries(Object.entries(itemKeys).map(([type,key])=>[key,readItems(type)]))};
+};
+const syncSections = () => {
+ document.querySelectorAll('[data-section]').forEach(section=>{
+  const enabled=document.querySelector('[data-enable="'+section.dataset.section+'"]').checked;
+  section.hidden=!enabled;
+  section.querySelectorAll('input,select,textarea,button').forEach(field=>{field.disabled=!enabled || Boolean(field.closest('[data-image-pending="true"]'));});
+ });
+ [...document.querySelectorAll('.builder-panel')].filter(panel=>!panel.hidden).forEach((panel,index)=>{panel.querySelector('.builder-panel__heading > span').textContent=String(index+1).padStart(2,'0');});
+};
+const applyPreset = () => {
+ const presets={package:['flight','stay'],touring:['flight','stay','transfer','experience','day'],golf:['flight','stay','transfer','day','golf'],hotel:['stay'],custom:['stay','extra']};
+ document.querySelectorAll('[data-enable]').forEach(el=>{el.checked=(presets[form.elements.quoteType.value]||[]).includes(el.dataset.enable);});
+ syncSections();
+};
+form.elements.quoteType.addEventListener('change',applyPreset);
+document.querySelectorAll('[data-enable]').forEach(el=>el.addEventListener('change',syncSections));
+const validate = () => {
+ if (!imagesReady() || !form.reportValidity()) return false;
+ for(const type of ['flight','stay','transfer','experience','day','golf','extra']) {
+  if(document.querySelector('[data-enable="'+type+'"]').checked && !lists[type].children.length){setStatus('Add an entry to '+{"stay":"Hotels","day":"Day-to-day itinerary","flight":"Flights","transfer":"Transfers","experience":"Excursions & activities","golf":"Golf itinerary","extra":"Additional holiday information"}[type]+' or switch that section off.',true);return false;}
+ }
+ return true;
 };
 
-const validate = () => {
-  if (!imagesReady()) return false;
-  if (!form.reportValidity()) return false;
-  if (!lists.day.children.length) {
-    setStatus("Add at least one itinerary day.", true);
-    lists.day.scrollIntoView({ behavior: "smooth", block: "center" });
-    return false;
-  }
-  if (!lists.stay.children.length) {
-    setStatus("Add at least one accommodation entry.", true);
-    lists.stay.scrollIntoView({ behavior: "smooth", block: "center" });
-    return false;
-  }
-  return true;
+// Only allow ordinary web links, including links restored from older drafts.
+const renderWebsiteLink = (item, type) => {
+  const value = String(item.websiteUrl || '').trim();
+  if (!value) return '';
+  let url;
+  try { url = new URL(value); } catch { return ''; }
+  if (!['https:', 'http:'].includes(url.protocol)) return '';
+  const labels = {stay:'Visit hotel website', golf:'Visit golf course website', flight:'View flight website', transfer:'View transfer website', experience:'View excursion website', day:'View itinerary information', extra:'View more information'};
+  return '<a class="quote-website-link" href="'+attributeEscape(url.href)+'" target="_blank" rel="noopener noreferrer">'+htmlEscape(item.websiteLabel || labels[type] || 'View website')+'</a>';
 };
 
 const renderDays = (days) =>
@@ -230,7 +249,7 @@ const renderDays = (days) =>
     .map(
       (item) => `<div class="quote-day">
         <div><span>Day ${htmlEscape(item.day)}</span><strong>${htmlEscape(formatDate(item.date))}</strong></div>
-        <div><h3>${htmlEscape(item.title)}</h3><p>${htmlEscape(item.details)}</p></div>
+        <div><h3>${htmlEscape(item.title)}</h3><p>${htmlEscape(item.details)}</p>${renderWebsiteLink(item,"day")}</div>
       </div>`,
     )
     .join("");
@@ -245,7 +264,7 @@ const renderStays = (stays) =>
         <div>
           <p class="eyebrow">${htmlEscape(item.nights)} nights · ${htmlEscape(item.location)}</p>
           <h3>${htmlEscape(item.hotel)}</h3>
-          <p>${htmlEscape(item.description)}</p>
+          <p>${htmlEscape(item.description)}</p>${renderWebsiteLink(item,"stay")}
           <dl class="quote-list">
             <div><dt>Room</dt><dd>${htmlEscape(item.room)}</dd></div>
             <div><dt>Board</dt><dd>${htmlEscape(item.board)}</dd></div>
@@ -264,43 +283,32 @@ const renderGolf = (rounds) =>
       const date = shortDate(item.date);
       return `<div class="golf-round">
         <div class="golf-round__date"><span>${date.day}</span>${date.month}</div>
-        <div><h3>${htmlEscape(item.course)}</h3><p>${htmlEscape(item.courseDetails)}</p></div>
+        <div><h3>${htmlEscape(item.course)}</h3><p>${htmlEscape(item.courseDetails)}</p>${renderWebsiteLink(item,"golf")}</div>
         <dl><div><dt>Tee time</dt><dd>${htmlEscape(item.teeTime)}</dd></div><div><dt>Included</dt><dd>${htmlEscape(item.included)}</dd></div></dl>
       </div>`;
     })
     .join("");
 
-const loadQuoteAssets = async (data) => {
-  const siteUrl = data.siteUrl.trim().replace(/\/$/, "");
-  const stylesheetUrl = `${siteUrl}/styles.css`;
-  const logoUrl = `${siteUrl}/velvet-edge-logo-v3.svg`;
-  const fetchText = async (url) => {
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) throw new Error(`${url} is unavailable`);
-    return response.text();
-  };
-  const [stylesheet, logo] = await Promise.allSettled([
-    fetchText(stylesheetUrl),
-    fetchText(logoUrl),
-  ]);
-
-  return {
-    styleMarkup:
-      stylesheet.status === "fulfilled"
-        ? `<style>\n${stylesheet.value}\n</style>`
-        : `<link rel="stylesheet" href="${attributeEscape(stylesheetUrl)}">`,
-    logoMarkup:
-      logo.status === "fulfilled"
-        ? logo.value
-            .replace(/<\?xml[^>]*>\s*/i, "")
-            .replace(
-              "<svg ",
-              '<svg class="brand__mark" aria-hidden="true" focusable="false" ',
-            )
-        : `<img class="brand__mark" src="${attributeEscape(logoUrl)}" alt="" width="150" height="56">`,
-  };
+const loadQuoteAssets = async () => {
+ const assets=JSON.parse(document.querySelector('#quote-assets').textContent);
+ return {styleMarkup:'<style>'+assets.css+'\n'+document.querySelector('#package-styles').textContent+'</style>',logoMarkup:assets.logo.replace(/<\?xml[^>]*>\s*/i,'').replace('<svg ','<svg class="brand__mark" aria-hidden="true" focusable="false" ')};
 };
-
+const sectionEnabled=(data,type)=>type==='stay' && data.enabledSections?.stay===undefined ? true : data.enabledSections ? data.enabledSections[type]===true : type==='day'||type==='golf';
+const packageSchemas={"flight":[["direction","Journey","text",["Outbound","Return","Connecting","Internal"]],["airline","Airline","text",null,true],["flightNumber","Flight number"],["from","Departure airport / terminal","text",null,true],["to","Arrival airport / terminal","text",null,true],["departureDate","Departure date","date"],["departureTime","Departure time (local)","time"],["arrivalDate","Arrival date","date"],["arrivalTime","Arrival time (local)","time"],["cabin","Cabin","text",["Economy","Premium economy","Business","First"]],["baggage","Baggage allowance"],["notes","Flight notes / connections","textarea"]],"transfer":[["purpose","Transfer type","text",["Airport arrival","Airport departure","Return airport transfer","Hotel to hotel","Station transfer","Port transfer","Excursion transfer","Other"]],["transport","Transport","text",["Private car","Private executive car","Private minivan","Shared shuttle","Coach","Train","Bullet train","Ferry / boat","Domestic flight","Car hire","Other"],true],["customTransport","Other transport / vehicle details"],["from","Pick-up location","text",null,true],["to","Drop-off location","text",null,true],["date","Date","date"],["time","Pick-up time (local)","time"],["duration","Estimated journey time"],["passengers","Passengers / luggage"],["priceStatus","Price treatment","text",["Included in holiday price","Optional extra — not included","Pay locally — not included"],true],["price","Extra price / currency / per person or vehicle"],["notes","Meeting point / return details / accessibility","textarea"]],"experience":[["title","Excursion / activity name","text",null,true],["category","Experience type","text",["Sightseeing tour","Cultural / heritage","Food / wine","Boat trip / cruise","Adventure / outdoors","Wildlife / nature","Theme park / attraction","Wellness / spa","Sport / water sports","Shopping","Other"],true],["customType","Other type / further detail"],["service","Service","text",["Private guided","Shared / group guided","Self-guided","Admission only"]],["location","Location"],["date","Date","date"],["time","Start time (local)","time"],["duration","Duration"],["priceStatus","Price treatment","text",["Included in holiday price","Optional extra — not included","Pay locally — not included"],true],["price","Extra price / currency / per person or group"],["included","What is included","textarea"],["notes","Description / pick-up / restrictions","textarea"]],"extra":[["title","Section heading","text",null,true],["details","Holiday information","textarea",null,true]]};
+const renderPackageItems=(type,items)=>items.map(item=>'<article class="package-card"><h3>'+htmlEscape(item.title || (type==='flight' ? [item.direction,item.airline,item.flightNumber].filter(Boolean).join(' · ') : type==='transfer' ? [item.purpose,item.transport].filter(Boolean).join(' · ') : 'Holiday information'))+'</h3><dl>'+packageSchemas[type].filter(([key])=>item[key] && key!=='title').map(([key,label,format])=>'<div><dt>'+htmlEscape(label)+'</dt><dd>'+htmlEscape(format==='date'?formatDate(item[key]):item[key])+'</dd></div>').join('')+'</dl>'+renderWebsiteLink(item,type)+'</article>').join('');
+const renderSections=data=>{
+ const sections=[];
+ if(sectionEnabled(data,'flight')&&data.flights.length) sections.push(['Getting there','Flights',renderPackageItems('flight',data.flights)]);
+ if(sectionEnabled(data,'stay')&&data.stays.length) sections.push(['Your stay','Hotels',renderStays(data.stays)]);
+ if(sectionEnabled(data,'transfer')&&data.transfers.length) sections.push(['On the move','Transfers',renderPackageItems('transfer',data.transfers)]);
+ if(sectionEnabled(data,'experience')&&data.experiences.length) sections.push(['Discover more','Excursions and itinerary',renderPackageItems('experience',data.experiences)]);
+ if(sectionEnabled(data,'day')&&data.days.length) sections.push(['Day by day','Day-to-day itinerary',renderDays(data.days)]);
+ if(sectionEnabled(data,'golf')&&(data.golf.length||data.golfNote)) sections.push(['Your rounds','Golf itinerary',renderGolf(data.golf)+(data.golfNote?'<p class="quote-note">'+htmlEscape(data.golfNote)+'</p>':'')]);
+ if(sectionEnabled(data,'extra')&&data.extras.length) sections.push(['Made for you','Additional holiday information',renderPackageItems('extra',data.extras)]);
+ const notes=[['exclusions','Not included'],['paymentTerms','Deposit and payment schedule'],['bookingTerms','Booking and cancellation conditions'],['travelNotes','Travel requirements and other notes']].filter(([key])=>data[key]).map(([key,label])=>'<article class="package-card"><h3>'+label+'</h3><p>'+htmlEscape(data[key])+'</p></article>').join('');
+ if(notes) sections.push(['Before you book','Important information',notes]);
+ return sections.map(([label,title,content],i)=>'<details class="quote-accordion"'+(i===0?' open':'')+'><summary><span class="quote-accordion__number">'+String(i+1).padStart(2,'0')+'</span><span><small>'+label+'</small>'+title+'</span><i aria-hidden="true"></i></summary><div class="quote-accordion__content">'+content+'</div></details>').join('');
+};
 const generateHtml = (data, assets) => {
   const inclusions = data.inclusions
     .split("\n")
@@ -331,22 +339,21 @@ const generateHtml = (data, assets) => {
     <section class="quote-summary section--tight"><div class="container">
       <div class="quote-section-heading"><div><p class="eyebrow">At a glance</p><h2>Your journey</h2></div><button class="quote-print" type="button" data-print-quote>Print or save as PDF</button></div>
       <div class="quote-facts">
-        <div class="quote-fact quote-fact--wide"><span>Hotel</span><strong>${htmlEscape(data.hotel)}</strong><small>${htmlEscape(data.location)}</small></div>
-        <div class="quote-fact"><span>Room</span><strong>${htmlEscape(data.room)}</strong></div>
+        ${!sectionEnabled(data,"stay") ? `<div class="quote-fact"><span>Destination</span><strong>${htmlEscape(data.location)}</strong></div>` : ""}
+        ${sectionEnabled(data,"stay") ? `<div class="quote-fact quote-fact--wide"><span>Hotel</span><strong>${htmlEscape(data.hotel)}</strong><small>${htmlEscape(data.location)}</small></div>` : ""}
+        ${sectionEnabled(data,"stay") ? `<div class="quote-fact"><span>Room</span><strong>${htmlEscape(data.room)}</strong></div>` : ""}
         <div class="quote-fact"><span>Arrival date</span><strong>${htmlEscape(formatDate(data.arrival))}</strong></div>
         <div class="quote-fact"><span>Duration</span><strong>${htmlEscape(data.nights)} nights</strong></div>
-        <div class="quote-fact"><span>Board basis</span><strong>${htmlEscape(data.board)}</strong></div>
+        ${sectionEnabled(data,"stay") ? `<div class="quote-fact"><span>Board basis</span><strong>${htmlEscape(data.board)}</strong></div>` : ""}
         <div class="quote-fact"><span>Total guests</span><strong>${htmlEscape(data.guests)}</strong></div>
-        <div class="quote-fact quote-fact--wide"><span>Golf courses</span><strong>${htmlEscape(data.golfSummary || "To be confirmed")}</strong></div>
+        ${sectionEnabled(data,"golf") && data.golfSummary ? `<div class="quote-fact quote-fact--wide"><span>Golf courses</span><strong>${htmlEscape(data.golfSummary)}</strong></div>` : ""}
       </div>
-      <div class="quote-price"><div><span>Price per person</span><strong>${htmlEscape(data.perPerson)}</strong><small>Per person, based on the stated occupancy</small></div><div class="quote-price__total"><span>Total holiday price</span><strong>${htmlEscape(data.totalPrice)}</strong><small>Including all items shown below</small></div></div>
+      <div class="quote-price"><div><span>Price per person</span><strong>${htmlEscape(data.perPerson)}</strong><small>Per person, based on the stated occupancy</small></div><div class="quote-price__total"><span>Total holiday price</span><strong>${htmlEscape(data.totalPrice)}</strong><small>Includes stated inclusions; excludes optional extras and local payments</small></div></div>
       ${inclusions ? `<div class="quote-inclusions"><p class="eyebrow">Included in your proposal</p><ul>${inclusions}</ul></div>` : ""}
     </div></section>
     <section class="quote-details section"><div class="container"><div class="quote-section-heading"><div><p class="eyebrow">The complete proposal</p><h2>Explore every detail</h2></div><p>Select each section to view the full arrangements.</p></div>
       <div class="quote-accordions">
-        <details class="quote-accordion" open><summary><span class="quote-accordion__number">01</span><span><small>Day by day</small>Itinerary overview</span><i aria-hidden="true"></i></summary><div class="quote-accordion__content">${renderDays(data.days)}</div></details>
-        <details class="quote-accordion"><summary><span class="quote-accordion__number">02</span><span><small>Your stay</small>Full accommodation itinerary</span><i aria-hidden="true"></i></summary><div class="quote-accordion__content">${renderStays(data.stays)}</div></details>
-        ${data.golf.length ? `<details class="quote-accordion"><summary><span class="quote-accordion__number">03</span><span><small>Your rounds</small>Full golf itinerary</span><i aria-hidden="true"></i></summary><div class="quote-accordion__content">${renderGolf(data.golf)}${data.golfNote ? `<p class="quote-note">${htmlEscape(data.golfNote)}</p>` : ""}</div></details>` : ""}
+        ${renderSections(data)}
       </div>
     </div></section>
     <section class="quote-next"><div class="container quote-next__inner"><div><p class="eyebrow">Your next step</p><h2>Ready when you are</h2><p>Your arrangements remain subject to availability until confirmed. Contact your travel designer to reserve this journey or request a change.</p></div><div class="quote-next__actions"><a class="btn btn--gold" href="mailto:${attributeEscape(data.agentEmail)}?subject=Accept%20${mailSubject}">Accept this proposal</a><a class="btn btn--light" href="mailto:${attributeEscape(data.agentEmail)}?subject=Changes%20to%20${mailSubject}">Request a change</a></div></div></section>
@@ -386,18 +393,20 @@ form.elements.reference.addEventListener("input", updateExpectedLink);
 document
   .querySelector("[data-copy-link]")
   .addEventListener("click", async () => {
-    await navigator.clipboard.writeText(
+    try { await navigator.clipboard.writeText(
       document.querySelector("[data-expected-link]").textContent,
     );
     setStatus(
       "Client link copied. It will work after the generated file is uploaded.",
     );
+    } catch { setStatus("Your browser could not copy the link. Select the expected client link above and copy it manually.", true); }
   });
 
 document.querySelector("[data-preview]").addEventListener("click", async () => {
   if (!validate()) return;
   const data = getData();
   setStatus("Preparing preview...");
+  try {
   const assets = await loadQuoteAssets(data);
   const url = URL.createObjectURL(
     new Blob([generateHtml(data, assets)], { type: "text/html" }),
@@ -405,6 +414,7 @@ document.querySelector("[data-preview]").addEventListener("click", async () => {
   window.open(url, "_blank", "noopener");
   setStatus("Preview opened in a new tab.");
   setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch { setStatus("The preview could not be prepared. Check that you are using the matching quote template and builder files.", true); }
 });
 
 form.addEventListener("submit", async (event) => {
@@ -413,11 +423,13 @@ form.addEventListener("submit", async (event) => {
   const data = getData();
   const filename = `quote-${slugify(data.reference)}.html`;
   setStatus("Building the complete styled quote...");
+  try {
   const assets = await loadQuoteAssets(data);
   download(generateHtml(data, assets), filename, "text/html");
   setStatus(
     `${filename} downloaded. Upload it to GitHub to activate the client link.`,
   );
+  } catch { setStatus("The quote could not be exported. Check that you are using the matching quote template and builder files.", true); }
 });
 
 document.querySelector("[data-save-draft]").addEventListener("click", () => {
@@ -438,19 +450,14 @@ document
     if (!file) return;
     try {
       const data = JSON.parse(await file.text());
-      Object.entries(data).forEach(([key, value]) => {
-        const field = form.elements.namedItem(key);
-        if (field && typeof value === "string") {
-          field.value = value;
-        }
-      });
-      Object.keys(lists).forEach((type) => {
-        lists[type].replaceChildren();
-        const key = { day: "days", stay: "stays", golf: "golf" }[type];
-        (data[key] || data[type] || []).forEach((item) =>
-          addItem(type, item),
-        );
-      });
+      if(!data || typeof data!=='object' || Array.isArray(data) || !('stays' in data || 'stay' in data)) throw new Error('Invalid draft');
+      Object.entries(itemKeys).forEach(([type,key])=>{const items=data[key]||data[type]||[];if(!Array.isArray(items)||items.some(item=>!item||typeof item!=='object'||Object.values(item).some(value=>typeof value!=='string'&&typeof value!=='number')))throw new Error('Invalid entries');});
+      form.reset();
+      form.querySelectorAll('[name]').forEach(field=>{if(typeof data[field.name]==='string') field.value=data[field.name];});
+      if(!data.quoteType) form.elements.quoteType.value=data.golf?.length||data.golfSummary?'golf':'custom';
+      document.querySelectorAll('[data-enable]').forEach(el=>{const type=el.dataset.enable;el.checked=type==='stay' && data.enabledSections?.stay===undefined ? true : data.enabledSections ? data.enabledSections[type]===true : Boolean((data[itemKeys[type]]||data[type]||[]).length || type==='golf'&&(data.golfNote||data.golfSummary));});
+      Object.entries(itemKeys).forEach(([type,key])=>{lists[type].replaceChildren();(data[key]||data[type]||[]).forEach(item=>addItem(type,item));});
+      syncSections();
       updateExpectedLink();
       setStatus("Editable draft loaded.");
     } catch {
@@ -464,6 +471,6 @@ const validUntil = new Date(today);
 validUntil.setDate(validUntil.getDate() + 14);
 form.elements.preparedDate.value = today.toISOString().slice(0, 10);
 form.elements.validUntil.value = validUntil.toISOString().slice(0, 10);
-addItem("day", { day: "1" });
+applyPreset();
 addItem("stay");
 updateExpectedLink();
