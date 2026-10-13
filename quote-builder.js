@@ -1,6 +1,7 @@
 const form = document.querySelector("#quote-builder");
 const status = document.querySelector("[data-builder-status]");
 const lists = {
+  advice: document.querySelector('[data-list="advice"]'),
   flight: document.querySelector('[data-list="flight"]'),
   transfer: document.querySelector('[data-list="transfer"]'),
   experience: document.querySelector('[data-list="experience"]'),
@@ -260,8 +261,13 @@ const renderFlightStops=item=>{
 const addItem = (type, values = {}) => {
   const template = document.querySelector(`#${type}-template`);
   const item = template.content.firstElementChild.cloneNode(true);
+  if(values.clientSellingPrice){
+    const recovered=document.createElement('div');recovered.className='builder-grid';recovered.dataset.recoveredPrice='true';
+    recovered.innerHTML='<div class="builder-field"><label>Recovered client price (manual pricing)</label><input data-key="clientSellingPrice"></div><div class="builder-field"><label>Recovered price note</label><input data-key="clientPriceTreatment"></div>';
+    item.append(recovered);
+  }
   item.querySelectorAll("[data-key]").forEach((field) => {
-    const defaults={costBasis:'group',costQuantity:'1',pricingTreatment:['day','extra'].includes(type)?'information':'included'};
+    const defaults={clientVisibility:'client',costBasis:'group',costQuantity:'1',pricingTreatment:['day','extra','advice'].includes(type)?'information':'included'};
     field.value = values[field.dataset.key] ?? defaults[field.dataset.key] ?? "";
   });
   item
@@ -288,11 +294,11 @@ const readItems = (type) =>
     ),
   );
 
-const itemKeys = {day:"days", stay:"stays", golf:"golf", flight:"flights", transfer:"transfers", experience:"experiences", extra:"extras"};
-const pricingLabels={flight:'Flights',stay:'Hotels',transfer:'Transfers',experience:'Excursions and itinerary',day:'Day-to-day itinerary',golf:'Golf itinerary',extra:'Additional holiday information'};
+const itemKeys = {day:"days", stay:"stays", golf:"golf", flight:"flights", transfer:"transfers", experience:"experiences", extra:"extras", advice:"advice"};
+const pricingLabels={flight:'Flights',stay:'Hotels',transfer:'Transfers',experience:'Excursions and itinerary',day:'Day-to-day itinerary',golf:'Golf itinerary',extra:'Additional holiday information',advice:'Travel planning & tips'};
 const priceTreatment=(item,type)=>{
  if(type==='transfer'||type==='experience') return ({'Included in holiday price':'included','Optional extra — not included':'optional','Pay locally — not included':'local'})[item.priceStatus] || 'unknown';
- return item.pricingTreatment || (['day','extra'].includes(type)?'information':'included');
+ return item.pricingTreatment || (['day','extra','advice'].includes(type)?'information':'included');
 };
 const priceMoney=(cents,currency='GBP')=>new Intl.NumberFormat('en-GB',{style:'currency',currency:['GBP','EUR','USD'].includes(currency)?currency:'GBP'}).format(cents/100);
 const calculateQuotePricing=data=>{
@@ -366,7 +372,7 @@ const renderSellingPrice=item=>item.clientSellingPrice?'<p class="quote-selling-
 
 const getData = () => {
   const fields = Object.fromEntries([...form.querySelectorAll('[name]')].map(field => [field.name,field.value.trim()]));
-  return {...fields, schemaVersion:3, enabledSections:Object.fromEntries([...document.querySelectorAll('[data-enable]')].map(el=>[el.dataset.enable,el.checked])), ...Object.fromEntries(Object.entries(itemKeys).map(([type,key])=>[key,readItems(type)]))};
+  return {...fields, schemaVersion:4, enabledSections:Object.fromEntries([...document.querySelectorAll('[data-enable]')].map(el=>[el.dataset.enable,el.checked])), ...Object.fromEntries(Object.entries(itemKeys).map(([type,key])=>[key,readItems(type)]))};
 };
 const syncSections = () => {
  document.querySelectorAll('[data-section]').forEach(section=>{
@@ -385,13 +391,14 @@ const applyPreset = () => {
 form.elements.quoteType.addEventListener('change',applyPreset);
 document.querySelectorAll('[data-enable]').forEach(el=>el.addEventListener('change',syncSections));
 const validate = () => {
+ syncItemVisibility();
  if(form.elements.coverStyle.value==='photo' && !validCoverImage(form.elements.coverImage.value)){setStatus("Upload a cover image or choose the Velvet Edge Travel logo background.",true);return false;}
  refreshPricing();
  const pricing=calculateQuotePricing(getData());
  if(form.elements.pricingMode.value==="automatic" && pricing.errors.length){setStatus(pricing.errors[0],true);return false;}
  if (!imagesReady() || !form.reportValidity()) return false;
- for(const type of ['flight','stay','transfer','experience','day','golf','extra']) {
-  if(document.querySelector('[data-enable="'+type+'"]').checked && !lists[type].children.length){setStatus('Add an entry to '+{"stay":"Hotels","day":"Day-to-day itinerary","flight":"Flights","transfer":"Transfers","experience":"Excursions & activities","golf":"Golf itinerary","extra":"Additional holiday information"}[type]+' or switch that section off.',true);return false;}
+ for(const type of ['flight','stay','transfer','experience','day','golf','extra','advice']) {
+  if(document.querySelector('[data-enable="'+type+'"]').checked && !lists[type].children.length){setStatus('Add an entry to '+{"stay":"Hotels","day":"Day-to-day itinerary","flight":"Flights","transfer":"Transfers","experience":"Excursions & activities","golf":"Golf itinerary","extra":"Additional holiday information","advice":"Travel planning & tips"}[type]+' or switch that section off.',true);return false;}
  }
  return true;
 };
@@ -458,6 +465,7 @@ const loadQuoteAssets = async () => {
 };
 const sectionEnabled=(data,type)=>type==='stay' && data.enabledSections?.stay===undefined ? true : data.enabledSections ? data.enabledSections[type]===true : type==='day'||type==='golf';
 const packageSchemas={"flight":[["direction","Journey","text",["Outbound","Return","Connecting","Internal"]],["airline","Airline","text",null,true],["flightNumber","Flight number"],["from","Departure airport / terminal","text",null,true],["to","Arrival airport / terminal","text",null,true],["departureDate","Departure date","date"],["departureTime","Departure time (local)","time"],["arrivalDate","Arrival date","date"],["arrivalTime","Arrival time (local)","time"],["cabin","Cabin","text",["Economy","Premium economy","Business","First"]],["baggage","Baggage allowance"],["notes","Flight notes / connections","textarea"]],"transfer":[["purpose","Transfer type","text",["Airport arrival","Airport departure","Return airport transfer","Hotel to hotel","Station transfer","Port transfer","Excursion transfer","Other"]],["transport","Transport","text",["Private car","Private executive car","Private minivan","Shared shuttle","Coach","Train","Bullet train","Ferry / boat","Domestic flight","Car hire","Other"],true],["customTransport","Other transport / vehicle details"],["from","Pick-up location","text",null,true],["to","Drop-off location","text",null,true],["date","Date","date"],["time","Pick-up time (local)","time"],["duration","Estimated journey time"],["passengers","Passengers / luggage"],["priceStatus","Price treatment","text",["Included in holiday price","Optional extra — not included","Pay locally — not included"],true],["price","Extra price / currency / per person or vehicle"],["notes","Meeting point / return details / accessibility","textarea"]],"experience":[["title","Excursion / activity name","text",null,true],["category","Experience type","text",["Sightseeing tour","Cultural / heritage","Food / wine","Boat trip / cruise","Adventure / outdoors","Wildlife / nature","Theme park / attraction","Wellness / spa","Sport / water sports","Shopping","Other"],true],["customType","Other type / further detail"],["service","Service","text",["Private guided","Shared / group guided","Self-guided","Admission only"]],["location","Location"],["date","Date","date"],["time","Start time (local)","time"],["duration","Duration"],["priceStatus","Price treatment","text",["Included in holiday price","Optional extra — not included","Pay locally — not included"],true],["price","Extra price / currency / per person or group"],["included","What is included","textarea"],["notes","Description / pick-up / restrictions","textarea"]],"extra":[["title","Section heading","text",null,true],["details","Holiday information","textarea",null,true]]};
+packageSchemas.advice=[["category","Type of guidance","text"],["title","Title","text"],["from","From / starting point","text"],["to","To / destination","text"],["transport","Suggested transport","text"],["duration","Estimated travel / activity time","text"],["when","Suggested day / time","text"],["details","Route, directions, practical advice or alternatives","textarea"],["budget","Indicative spend / booking advice (optional, not added to totals)","text"]];
 const renderPackageItems=(type,items)=>items.map(item=>'<article class="package-card"><h3>'+htmlEscape(item.title || (type==='flight' ? [item.direction,item.airline,item.flightNumber].filter(Boolean).join(' · ') : type==='transfer' ? [item.purpose,item.transport].filter(Boolean).join(' · ') : 'Holiday information'))+'</h3><dl>'+packageSchemas[type].filter(([key])=>item[key] && key!=='title' && !(key==='price' && item.clientSellingPrice)).map(([key,label,format])=>'<div><dt>'+htmlEscape(label)+'</dt><dd>'+htmlEscape(format==='date'?formatDate(item[key]):item[key])+'</dd></div>').join('')+'</dl>'+(type==='flight'?renderFlightStops(item):'')+renderWebsiteLink(item,type)+renderSellingPrice(item)+'</article>').join('');
 const renderSections=data=>{
  const sections=[];
@@ -468,6 +476,7 @@ const renderSections=data=>{
  if(sectionEnabled(data,'day')&&data.days.length) sections.push(['Day by day','Day-to-day itinerary',renderDays(data.days)]);
  if(sectionEnabled(data,'golf')&&(data.golf.length||data.golfNote)) sections.push(['Your rounds','Golf itinerary',renderGolf(data.golf)+(data.golfNote?'<p class="quote-note">'+htmlEscape(data.golfNote)+'</p>':'')]);
  if(sectionEnabled(data,'extra')&&data.extras.length) sections.push(['Made for you','Additional holiday information',renderPackageItems('extra',data.extras)]);
+ if(sectionEnabled(data,'advice')&&data.advice?.length) sections.push(['Velvet Edge Travel recommendations','Travel planning & tips','<p class="advice-note">Suggested routes, activities and practical guidance. These are planning suggestions, not confirmed bookings. Check current timings, availability and any stated costs before travelling.</p>'+renderPackageItems('advice',data.advice)]);
  const notes=[['exclusions','Not included'],['paymentTerms','Deposit and payment schedule'],['bookingTerms','Booking and cancellation conditions'],['travelNotes','Travel requirements and other notes']].filter(([key])=>data[key]).map(([key,label])=>'<article class="package-card"><h3>'+label+'</h3><p>'+htmlEscape(data[key])+'</p></article>').join('');
  if(notes) sections.push(['Before you book','Important information',notes]);
  return sections.map(([label,title,content],i)=>'<details class="quote-accordion"'+(i===0?' open':'')+'><summary><span class="quote-accordion__number">'+String(i+1).padStart(2,'0')+'</span><span><small>'+label+'</small>'+title+'</span><i aria-hidden="true"></i></summary><div class="quote-accordion__content">'+content+'</div></details>').join('');
@@ -499,21 +508,104 @@ const journeySummaryFacts = (data) => {
  if(sectionEnabled(data,'extra')) add('Additional holiday information',data.extraSummary||join(items('extras').map(item=>item.title))||'See full details below');
  return facts;
 };
+const hasPrivateIncludedCosts=data=>Object.entries(itemKeys).some(([type,key])=>sectionEnabled(data,type)&&(data[key]||[]).some(item=>['internal','details'].includes(item.clientVisibility)&&priceTreatment(item,type)==='included'));
+const syncItemVisibility=()=>{
+ document.querySelectorAll('[data-item]').forEach(item=>{
+  const internal=item.querySelector('[data-key="clientVisibility"]')?.value==='internal';
+  item.classList.toggle('is-internal',internal);
+  item.querySelectorAll('input,select,textarea').forEach(field=>{
+   if(field.dataset.originalRequired===undefined)field.dataset.originalRequired=String(field.required);
+   // Internal costs need pricing fields, but not client-facing descriptive details.
+   if(!field.closest('.entry-pricing')&&field.dataset.key!=='priceStatus')field.required=!internal&&field.dataset.originalRequired==='true';
+  });
+ });
+};
+const clientVisibleData=data=>{
+ const result={...data,enabledSections:{...data.enabledSections}};
+ const overrides={flight:['flightSummary'],stay:['hotel','room','board'],transfer:['transferSummary'],experience:['experienceSummary'],day:['daySummary'],golf:['golfSummary','golfNote'],extra:['extraSummary']};
+ const privateCosts=hasPrivateIncludedCosts(data);
+ for(const [type,key] of Object.entries(itemKeys)){
+  const rows=data[key]||[];
+  const hidden=rows.some(item=>item.clientVisibility==='internal');
+  result[key]=rows.filter(item=>item.clientVisibility!=='internal').map(item=>{
+   if(item.clientVisibility==='details'||privateCosts&&priceTreatment(item,type)==='included'){
+    const visible={...item};delete visible.clientSellingPrice;delete visible.clientPriceTreatment;delete visible.price;if(item.clientVisibility==='details')delete visible.budget;return visible;
+   }
+   return item;
+  });
+  // Rebuild affected summaries only from visible entries; old overrides may mention hidden items.
+  if(rows.some(item=>['internal','details'].includes(item.clientVisibility)))(overrides[type]||[]).forEach(name=>{result[name]='';});
+  result.enabledSections[type]=sectionEnabled(data,type)&&(!hidden||result[key].length>0);
+ }
+ return result;
+};
+
 const renderJourneySummary=data=>journeySummaryFacts(data).map(({label,value})=>'<div class="quote-fact"><span>'+htmlEscape(label)+'</span><strong>'+htmlEscape(value)+'</strong></div>').join('');
 const refreshJourneySummary=()=>{
+ syncItemVisibility();
  refreshPricing();
  const preview=document.querySelector('[data-summary-preview]');
  if(preview) {
   const data=getData();
   const ready=data.pricingMode==='automatic' && !calculateQuotePricing(data).errors.length;
-  preview.innerHTML=renderJourneySummary(ready?priceQuoteForClient(data):data);
+  preview.innerHTML=renderJourneySummary(clientVisibleData(ready?priceQuoteForClient(data):data));
  }
 };
 form.addEventListener('input',refreshJourneySummary);
 form.addEventListener('change',refreshJourneySummary);
 
+// Export only client-visible information, never internal pricing or disabled sections.
+const quoteImportSnapshot=data=>{
+ const names=['siteUrl','reference','clientName','preparedDate','validUntil','title','intro','location','arrival','nights','guests','hotel','room','board','perPerson','totalPrice','inclusions','golfSummary','golfNote','flightSummary','transferSummary','experienceSummary','daySummary','extraSummary','exclusions','paymentTerms','bookingTerms','travelNotes','agentEmail','agentPhone','quoteType','currency','payingTravellers','coverStyle','coverPosition'];
+ const result=Object.fromEntries(names.filter(key=>typeof data[key]==='string').map(key=>[key,data[key]]));
+ result.format='velvet-edge-client-quote';result.schemaVersion=1;result.pricingMode='manual';result.enabledSections={...data.enabledSections};
+ if(data.coverStyle==='photo')result.coverImage=data.coverImage;
+ const pricingKeys=['baseCost','markupPercent','markupAmount','costBasis','costQuantity'];
+ for(const [type,key] of Object.entries(itemKeys))result[key]=sectionEnabled(data,type)?(data[key]||[]).filter(item=>item.clientVisibility!=='internal').map(item=>Object.fromEntries(Object.entries(item).filter(([name])=>!pricingKeys.includes(name)))):[];
+ return JSON.stringify(result).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
+};
+const importQuoteHtml=source=>{
+ const doc=new DOMParser().parseFromString(source,'text/html');
+ const embedded=doc.querySelector('#velvet-quote-data');
+ if(embedded){const data=JSON.parse(embedded.textContent);if(data.format!=='velvet-edge-client-quote')throw new Error('Not a quote');return {...data,pricingMode:'manual'};}
+ if(!doc.querySelector('.quote-intro h1')||!doc.querySelector('.quote-header__ref'))throw new Error('Not a Velvet Edge quote');
+ const text=(selector,root=doc)=>root.querySelector(selector)?.textContent.trim()||'';
+ const date=value=>{if(!value)return '';const parsed=new Date(value);return Number.isNaN(parsed.getTime())?'':parsed.toISOString().slice(0,10);};
+ const pairs=root=>Object.fromEntries([...root.querySelectorAll('dl > div')].map(el=>[text('dt',el),text('dd',el)]));
+ const link=root=>{const a=root.querySelector('a.quote-website-link');return a?{websiteUrl:a.getAttribute('href')||'',websiteLabel:a.textContent.trim()}:{};};
+ const data={pricingMode:'manual',quoteType:'custom',title:text('.quote-intro h1'),intro:text('.quote-intro__copy'),reference:text('.quote-header__ref strong'),stays:[],days:[],golf:[],flights:[],transfers:[],experiences:[],extras:[],advice:[],enabledSections:{}};
+ const aside=[...doc.querySelectorAll('.quote-intro__aside strong')].map(el=>el.textContent.trim());
+ [data.clientName,data.preparedDate,data.validUntil]=[aside[0]||'',date(aside[1]),date(aside[2])];
+ const facts=Object.fromEntries([...doc.querySelectorAll('.quote-fact')].map(el=>[text('span',el),text('strong',el)]));
+ Object.assign(data,{hotel:facts.Hotels||facts.Hotel||'',room:facts.Rooms||facts.Room||'',location:facts.Destination||text('.quote-fact--wide small'),arrival:date(facts['Arrival date']),nights:(facts.Duration||'').match(/\d+/)?.[0]||'',board:facts['Board basis']||'',guests:facts['Total guests']||'',golfSummary:facts['Golf courses']||'',perPerson:text('.quote-price > div:first-child strong'),totalPrice:text('.quote-price__total strong'),inclusions:[...doc.querySelectorAll('.quote-inclusions li')].map(el=>el.textContent.trim()).join('\n'),agentEmail:text('.quote-footer a[href^="mailto:"]'),agentPhone:text('.quote-footer a[href^="tel:"]')});
+ const cover=doc.querySelector('img.quote-cover:not(.quote-cover--logo)');
+ if(cover&&validCoverImage(cover.getAttribute('src'))){data.coverStyle='photo';data.coverImage=cover.getAttribute('src');data.coverPosition=['top','bottom'].includes(cover.style.objectPosition)?cover.style.objectPosition:'center';}
+ const scalarNotes={'Not included':'exclusions','Deposit and payment schedule':'paymentTerms','Booking and cancellation conditions':'bookingTerms','Travel requirements and other notes':'travelNotes'};
+ for(const section of doc.querySelectorAll('.quote-accordion')){
+  const heading=text('summary',section).toLowerCase();
+  if(section.querySelector('.quote-stay'))data.stays=[...section.querySelectorAll('.quote-stay')].map(el=>{const p=pairs(el);const eyebrow=text('.eyebrow',el);return {hotel:text('h3',el),location:eyebrow.split('·').slice(1).join('·').trim(),nights:eyebrow.match(/\d+/)?.[0]||'',description:text('h3 + p',el),room:p.Room||'',board:p.Board||'',checkIn:p['Check-in']||'',checkOut:p['Check-out']||'',address:p.Address||'',image:el.querySelector('img')?.getAttribute('src')||'',...link(el)};});
+  if(section.querySelector('.quote-day'))data.days=[...section.querySelectorAll('.quote-day')].map(el=>({day:text('span',el).replace(/^Day\s*/i,''),date:date(text('strong',el)),title:text('h3',el),details:text('h3 + p',el),...link(el)}));
+  if(section.querySelector('.golf-round')){data.golf=[...section.querySelectorAll('.golf-round')].map(el=>{const p=pairs(el);return {date:'',course:text('h3',el),courseDetails:text('h3 + p',el),teeTime:p['Tee time']||'',included:p.Included||'',...link(el)};});data.golfNote=text('.quote-note',section);}
+  let type=heading.includes('travel planning')?'advice':heading.includes('flight')?'flight':heading.includes('transfer')?'transfer':heading.includes('excursion')?'experience':heading.includes('additional holiday')?'extra':null;
+  for(const card of section.querySelectorAll('.package-card')){
+   if(!type){const key=scalarNotes[text('h3',card)];if(key)data[key]=text('p',card);continue;}
+   const values=pairs(card);const item={...link(card)};
+   for(const [key,label,format] of packageSchemas[type])if(values[label])item[key]=format==='date'?date(values[label]):values[label];
+   if(['experience','extra','advice'].includes(type))item.title=text('h3',card);
+   if(type==='flight'){
+    const stops=[...card.querySelectorAll('.quote-flight-stops li')].map(el=>{const p=pairs(el);return {airport:text('h4',el),kind:p.Type||'',duration:p['Stop duration']||'',notes:[p['Arrival (local)']?'Arrival: '+p['Arrival (local)']:'',p['Onward departure (local)']?'Departure: '+p['Onward departure (local)']:'',p['Onward flight']?'Onward flight: '+p['Onward flight']:'',p.Notes||''].filter(Boolean).join('\n'),terminal:p['Terminal / airport change']||''};});
+    if(stops.length)item.flightStops=JSON.stringify(stops);
+   }
+   data[itemKeys[type]].push(item);
+  }
+ }
+ for(const [type,key] of Object.entries(itemKeys))data.enabledSections[type]=data[key].length>0;
+ return data;
+};
+
 const generateHtml = (data, assets) => {
-  data = priceQuoteForClient(data);
+  const originalData = data;
+  data = clientVisibleData(priceQuoteForClient(data));
   const inclusions = data.inclusions
     .split("\n")
     .map((item) => item.trim())
@@ -544,7 +636,7 @@ const generateHtml = (data, assets) => {
       <div class="quote-section-heading"><div><p class="eyebrow">At a glance</p><h2>Your journey</h2></div><button class="quote-print" type="button" data-print-quote>Print or save as PDF</button></div>
       <div class="quote-facts">${renderJourneySummary(data)}</div>
       <div class="quote-price"><div><span>Price per person</span><strong>${htmlEscape(data.perPerson)}</strong><small>Per person, based on the stated occupancy</small></div><div class="quote-price__total"><span>Total holiday price</span><strong>${htmlEscape(data.totalPrice)}</strong><small>Includes stated inclusions; excludes optional extras and local payments</small></div></div>
-      ${data.pricingMode === "automatic" ? `<div class="quote-inclusions"><p class="eyebrow">Included section totals</p>${renderPricingTable(calculateQuotePricing(data), data.currency)}</div>` : ""}
+      ${data.pricingMode === "automatic" && !hasPrivateIncludedCosts(originalData) ? `<div class="quote-inclusions"><p class="eyebrow">Included section totals</p>${renderPricingTable(calculateQuotePricing(originalData), data.currency)}</div>` : ""}
       ${inclusions ? `<div class="quote-inclusions"><p class="eyebrow">Included in your proposal</p><ul>${inclusions}</ul></div>` : ""}
     </div></section>
     <section class="quote-details section"><div class="container"><div class="quote-section-heading"><div><p class="eyebrow">The complete proposal</p><h2>Explore every detail</h2></div><p>Select each section to view the full arrangements.</p></div>
@@ -555,6 +647,7 @@ const generateHtml = (data, assets) => {
     <section class="quote-next"><div class="container quote-next__inner"><div><p class="eyebrow">Your next step</p><h2>Ready when you are</h2><p>Your arrangements remain subject to availability until confirmed. Contact your travel designer to reserve this journey or request a change.</p></div><div class="quote-next__actions"><a class="btn btn--gold" href="mailto:${attributeEscape(data.agentEmail)}?subject=Accept%20${mailSubject}">Accept this proposal</a><a class="btn btn--light" href="mailto:${attributeEscape(data.agentEmail)}?subject=Changes%20to%20${mailSubject}">Request a change</a></div></div></section>
   </main>
   <footer class="quote-footer"><div class="container"><div><strong>Velvet Edge Travel</strong><span>Exceptional travel, designed around you.</span></div><div><a href="tel:${attributeEscape(data.agentPhone.replace(/[^+\d]/g, ""))}">${htmlEscape(data.agentPhone)}</a><a href="mailto:${attributeEscape(data.agentEmail)}">${htmlEscape(data.agentEmail)}</a></div></div></footer>
+  <script type="application/json" id="velvet-quote-data">${quoteImportSnapshot(data)}</script>
   <script>document.querySelector("[data-print-quote]")?.addEventListener("click",()=>{document.querySelectorAll(".quote-accordion").forEach(section=>{section.open=true});window.print()});</script>
 </body>
 </html>`;
@@ -646,7 +739,9 @@ document
     if (!file) return;
     if (!imagesReady()) { event.target.value = ""; return; }
     try {
-      const data = JSON.parse(await file.text());
+      const source=await file.text();
+      const isHtml=/^\s*</.test(source);
+      const data=isHtml?importQuoteHtml(source):JSON.parse(source);
       if(!data || typeof data!=='object' || Array.isArray(data) || !('stays' in data || 'stay' in data)) throw new Error('Invalid draft');
       Object.entries(itemKeys).forEach(([type,key])=>{const items=data[key]||data[type]||[];if(!Array.isArray(items)||items.some(item=>!item||typeof item!=='object'||Object.values(item).some(value=>typeof value!=='string'&&typeof value!=='number')))throw new Error('Invalid entries');});
       coverRevision++;
@@ -660,9 +755,9 @@ document
       syncSections();
       refreshCover();
       updateExpectedLink();
-      setStatus("Editable draft loaded.");
+      setStatus(isHtml?"HTML quote loaded in manual pricing mode. Review all entries and dates before exporting. Internal items, original costs and markups cannot be recovered from client HTML.":"Editable draft loaded.");
     } catch {
-      setStatus("This draft file could not be read.", true);
+      setStatus("This draft file could not be read. Choose an editable JSON draft or a Velvet Edge client quote HTML file.", true);
     }
     event.target.value = "";
   });
