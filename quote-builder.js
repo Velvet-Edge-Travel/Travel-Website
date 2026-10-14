@@ -261,6 +261,21 @@ const renderFlightStops=item=>{
  }).join('')+'</ol></div>';
 };
 
+const quoteOrderLabels={intro:'Introduction / cover',summary:'Journey summary, prices & inclusions',flight:'Flights',stay:'Hotels',transfer:'Transfers',experience:'Excursions and itinerary',day:'Day-to-day itinerary',golf:'Golf itinerary',extra:'Additional holiday information',advice:'Travel planning & tips',notes:'Important information',next:'Next steps'};
+const normaliseQuoteOrder=value=>{let order;try{order=JSON.parse(value||'[]');}catch{order=[];}return [...new Set([...(Array.isArray(order)?order:[]),...Object.keys(quoteOrderLabels)])].filter(key=>Object.hasOwn(quoteOrderLabels,key));};
+const moveInList=(node,delta)=>{const other=delta<0?node.previousElementSibling:node.nextElementSibling;if(!other)return;if(delta<0)node.parentElement.insertBefore(node,other);else node.parentElement.insertBefore(other,node);};
+function refreshQuoteOrder(){const host=document.querySelector('[data-quote-order]');if(!host)return;const order=normaliseQuoteOrder(form.elements.quoteOrder.value);form.elements.quoteOrder.value=JSON.stringify(order);host.replaceChildren();order.forEach((key,index)=>{const row=document.createElement('div');row.className='quote-order-row';row.dataset.orderKey=key;const text=document.createElement('span');text.textContent=quoteOrderLabels[key];row.append(text);for(const [label,delta] of [['Move up',-1],['Move down',1]]){const b=document.createElement('button');b.type='button';b.className='builder-secondary';b.textContent=label;b.disabled=delta<0?index===0:index===order.length-1;b.setAttribute('aria-label',label+' '+quoteOrderLabels[key]);b.onclick=()=>{[order[index],order[index+delta]]=[order[index+delta],order[index]];form.elements.quoteOrder.value=JSON.stringify(order);refreshQuoteOrder();document.querySelector('[data-order-key="'+key+'"] button:nth-of-type('+(delta<0?1:2)+')')?.focus();};row.append(b);}host.append(row);});}
+function setupQuoteOrder(){const host=document.createElement('div');host.className='quote-order-editor';host.innerHTML='<h3>Order of the client quote</h3><p>Move any section up or down. Unselected or empty sections are skipped in the finished quote. Contact details remain at the end.</p><input type="hidden" name="quoteOrder"><div data-quote-order></div>';form.querySelector('.builder-panel').append(host);refreshQuoteOrder();}
+function setupItemOrder(item){const tools=document.createElement('div');tools.className='entry-order';tools.innerHTML='<span>Entry order</span><button type="button" class="builder-secondary" data-entry-up>Move up</button><button type="button" class="builder-secondary" data-entry-down>Move down</button>';for(const [selector,delta] of [['[data-entry-up]',-1],['[data-entry-down]',1]])tools.querySelector(selector).onclick=()=>{moveInList(item,delta);refreshJourneySummary();};item.prepend(tools);}
+const parseGallery=value=>{try{const a=JSON.parse(value||'[]');return Array.isArray(a)?a.filter(x=>x&&typeof x.src==='string'&&(/^(?:https?:\/\/)/i.test(x.src)||validCoverImage(x.src))).map(x=>({src:x.src,caption:typeof x.caption==='string'?x.caption:''})):[];}catch{return [];}};
+const renderGallery=item=>{const images=parseGallery(item.gallery);return images.length?'<div class="quote-gallery">'+images.map(img=>'<figure><img src="'+attributeEscape(img.src)+'" alt="'+attributeEscape(img.caption||'Holiday photograph')+'" loading="lazy">'+(img.caption?'<figcaption>'+htmlEscape(img.caption)+'</figcaption>':'')+'</figure>').join('')+'</div>':'';};
+function setupGallery(item,values){const host=document.createElement('div');host.className='entry-gallery';host.innerHTML='<h4>Itinerary images</h4><p>Add one or several photos. You can reorder images, add captions, or remove them.</p><input type="hidden" data-key="gallery"><label>Upload itinerary images<input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/bmp,.jpg,.jpeg,.jfif,.png,.webp,.gif,.avif,.bmp" data-gallery-upload></label><small>Up to 20 MB per photo. Images are resized and embedded; animated images use a still frame.</small><p role="status" data-gallery-status></p><div class="gallery-editor"></div>';
+const field=host.querySelector('[data-key=gallery]'),upload=host.querySelector('[data-gallery-upload]'),message=host.querySelector('[data-gallery-status]'),grid=host.querySelector('.gallery-editor');let photos=parseGallery(values.gallery);const save=()=>{field.value=JSON.stringify(photos);};
+const draw=()=>{save();grid.replaceChildren();photos.forEach((photo,index)=>{const row=document.createElement('div');row.className='gallery-photo';row.innerHTML='<img alt="Uploaded itinerary photo"><label>Caption<input type="text"></label><div class="entry-order"><button type="button" class="builder-secondary">Move up</button><button type="button" class="builder-secondary">Move down</button><button type="button" class="builder-secondary">Remove image</button></div>';row.querySelector('img').src=photo.src;const caption=row.querySelector('input');caption.value=photo.caption;caption.oninput=()=>{photo.caption=caption.value;save();};const buttons=row.querySelectorAll('button');buttons[0].disabled=index===0;buttons[1].disabled=index===photos.length-1;buttons[0].onclick=()=>{if(index===0)return;[photos[index-1],photos[index]]=[photos[index],photos[index-1]];draw();};buttons[1].onclick=()=>{if(index===photos.length-1)return;[photos[index+1],photos[index]]=[photos[index],photos[index+1]];draw();};buttons[2].onclick=()=>{photos.splice(index,1);draw();};grid.append(row);});};
+upload.onclick=()=>{upload.value='';};upload.onchange=async()=>{const files=[...upload.files];if(!files.length)return;host.dataset.imagePending='true';upload.disabled=true;let added=0;const failures=[];try{for(const file of files){message.textContent='Preparing image '+(added+failures.length+1)+' of '+files.length+'…';try{const src=await prepareImage(file);if(!item.isConnected)return;photos.push({src,caption:''});added++;}catch(error){failures.push(file.name+': '+error.message);}}draw();message.textContent=added+' image(s) added.'+(failures.length?' '+failures.join(' '):'');}finally{delete host.dataset.imagePending;upload.disabled=false;syncSections();}};item.append(host);draw();}
+function arrangeQuoteHtml(html,data){const doc=new DOMParser().parseFromString(html,'text/html'),main=doc.querySelector('main');const blocks={intro:main.querySelector('.quote-intro'),summary:main.querySelector('.quote-summary'),next:main.querySelector('.quote-next')};main.querySelectorAll('[data-quote-section]').forEach(el=>blocks[el.dataset.quoteSection]=el);const output=[];let group=null;let number=0;for(const key of normaliseQuoteOrder(data.quoteOrder)){const block=blocks[key];if(!block)continue;if(block.matches('details')){if(!group){const section=doc.createElement('section');section.className='quote-details section';section.innerHTML='<div class="container"><div class="quote-accordions"></div></div>';output.push(section);group=section.querySelector('.quote-accordions');}block.querySelector('.quote-accordion__number').textContent=String(++number).padStart(2,'0');block.open=number===1;group.append(block);}else{group=null;output.push(block);}}main.replaceChildren(...output);return '<!doctype html>\n'+doc.documentElement.outerHTML;}
+
+
 const addItem = (type, values = {}) => {
   const template = document.querySelector(`#${type}-template`);
   const item = template.content.firstElementChild.cloneNode(true);
@@ -277,9 +292,11 @@ const addItem = (type, values = {}) => {
     .querySelector("[data-remove]")
     .addEventListener("click", () => {item.remove(); refreshJourneySummary();});
   lists[type].append(item);
+  setupItemOrder(item);
+  setupGallery(item,values);
   if (type === "stay") setupImageUpload(item);
   if (type === "flight") setupFlightStops(item);
-  item.querySelectorAll("[data-key]").forEach((field,index)=>{if(!field.id) field.id = `entry-${++imageControlId}-${index}`; const label=[...field.parentElement.children].find(el=>el.tagName==="LABEL" && (!el.htmlFor || el.htmlFor===field.id)); if(label) label.htmlFor=field.id;});
+  item.querySelectorAll("[data-key]").forEach((field,index)=>{if(field.type==="hidden")return;if(!field.id) field.id = `entry-${++imageControlId}-${index}`; const label=[...field.parentElement.children].find(el=>el.tagName==="LABEL" && (!el.htmlFor || el.htmlFor===field.id)); if(label) label.htmlFor=field.id;});
   syncSections();
 };
 
@@ -375,7 +392,7 @@ const renderSellingPrice=item=>item.clientSellingPrice?'<p class="quote-selling-
 
 const getData = () => {
   const fields = Object.fromEntries([...form.querySelectorAll('[name]')].map(field => [field.name,field.value.trim()]));
-  return {...fields, schemaVersion:4, enabledSections:Object.fromEntries([...document.querySelectorAll('[data-enable]')].map(el=>[el.dataset.enable,el.checked])), ...Object.fromEntries(Object.entries(itemKeys).map(([type,key])=>[key,readItems(type)]))};
+  return {...fields, schemaVersion:5, enabledSections:Object.fromEntries([...document.querySelectorAll('[data-enable]')].map(el=>[el.dataset.enable,el.checked])), ...Object.fromEntries(Object.entries(itemKeys).map(([type,key])=>[key,readItems(type)]))};
 };
 const syncSections = () => {
  document.querySelectorAll('[data-section]').forEach(section=>{
@@ -422,7 +439,7 @@ const renderDays = (days) =>
     .map(
       (item) => `<div class="quote-day">
         <div><span>Day ${htmlEscape(item.day)}</span><strong>${htmlEscape(formatDate(item.date))}</strong></div>
-        <div><h3>${htmlEscape(item.title)}</h3><p>${htmlEscape(item.details)}</p>${renderWebsiteLink(item,"day")}${renderSellingPrice(item)}</div>
+        <div><h3>${htmlEscape(item.title)}</h3><p>${htmlEscape(item.details)}</p>${renderWebsiteLink(item,"day")}${renderSellingPrice(item)}${renderGallery(item)}</div>
       </div>`,
     )
     .join("");
@@ -437,7 +454,7 @@ const renderStays = (stays) =>
         <div>
           <p class="eyebrow">${htmlEscape(item.nights)} nights · ${htmlEscape(item.location)}</p>
           <h3>${htmlEscape(item.hotel)}</h3>
-          <p>${htmlEscape(item.description)}</p>${renderWebsiteLink(item,"stay")}${renderSellingPrice(item)}
+          <p>${htmlEscape(item.description)}</p>${renderWebsiteLink(item,"stay")}${renderSellingPrice(item)}${renderGallery(item)}
           <dl class="quote-list">
             <div><dt>Room</dt><dd>${htmlEscape(item.room)}</dd></div>
             <div><dt>Board</dt><dd>${htmlEscape(item.board)}</dd></div>
@@ -456,7 +473,7 @@ const renderGolf = (rounds) =>
       const date = shortDate(item.date);
       return `<div class="golf-round">
         <div class="golf-round__date"><span>${date.day}</span>${date.month}</div>
-        <div><h3>${htmlEscape(item.course)}</h3><p>${htmlEscape(item.courseDetails)}</p>${renderWebsiteLink(item,"golf")}${renderSellingPrice(item)}</div>
+        <div><h3>${htmlEscape(item.course)}</h3><p>${htmlEscape(item.courseDetails)}</p>${renderWebsiteLink(item,"golf")}${renderSellingPrice(item)}${renderGallery(item)}</div>
         <dl><div><dt>Tee time</dt><dd>${htmlEscape(item.teeTime)}</dd></div><div><dt>Included</dt><dd>${htmlEscape(item.included)}</dd></div></dl>
       </div>`;
     })
@@ -469,20 +486,20 @@ const loadQuoteAssets = async () => {
 const sectionEnabled=(data,type)=>type==='stay' && data.enabledSections?.stay===undefined ? true : data.enabledSections ? data.enabledSections[type]===true : type==='day'||type==='golf';
 const packageSchemas={"flight":[["direction","Journey","text",["Outbound","Return","Connecting","Internal"]],["airline","Airline","text",null,true],["flightNumber","Flight number"],["from","Departure airport / terminal","text",null,true],["to","Arrival airport / terminal","text",null,true],["departureDate","Departure date","date"],["departureTime","Departure time (local)","time"],["arrivalDate","Arrival date","date"],["arrivalTime","Arrival time (local)","time"],["cabin","Cabin","text",["Economy","Premium economy","Business","First"]],["baggage","Baggage allowance"],["notes","Flight notes / connections","textarea"]],"transfer":[["purpose","Transfer type","text",["Airport arrival","Airport departure","Return airport transfer","Hotel to hotel","Station transfer","Port transfer","Excursion transfer","Other"]],["transport","Transport","text",["Private car","Private executive car","Private minivan","Shared shuttle","Coach","Train","Bullet train","Ferry / boat","Domestic flight","Car hire","Other"],true],["customTransport","Other transport / vehicle details"],["from","Pick-up location","text",null,true],["to","Drop-off location","text",null,true],["date","Date","date"],["time","Pick-up time (local)","time"],["duration","Estimated journey time"],["passengers","Passengers / luggage"],["priceStatus","Price treatment","text",["Included in holiday price","Optional extra — not included","Pay locally — not included"],true],["price","Extra price / currency / per person or vehicle"],["notes","Meeting point / return details / accessibility","textarea"]],"experience":[["title","Excursion / activity name","text",null,true],["category","Experience type","text",["Sightseeing tour","Cultural / heritage","Food / wine","Boat trip / cruise","Adventure / outdoors","Wildlife / nature","Theme park / attraction","Wellness / spa","Sport / water sports","Shopping","Other"],true],["customType","Other type / further detail"],["service","Service","text",["Private guided","Shared / group guided","Self-guided","Admission only"]],["location","Location"],["date","Date","date"],["time","Start time (local)","time"],["duration","Duration"],["priceStatus","Price treatment","text",["Included in holiday price","Optional extra — not included","Pay locally — not included"],true],["price","Extra price / currency / per person or group"],["included","What is included","textarea"],["notes","Description / pick-up / restrictions","textarea"]],"extra":[["title","Section heading","text",null,true],["details","Holiday information","textarea",null,true]]};
 packageSchemas.advice=[["category","Type of guidance","text"],["title","Title","text"],["from","From / starting point","text"],["to","To / destination","text"],["transport","Suggested transport","text"],["duration","Estimated travel / activity time","text"],["when","Suggested day / time","text"],["details","Route, directions, practical advice or alternatives","textarea"],["budget","Indicative spend / booking advice (optional, not added to totals)","text"]];
-const renderPackageItems=(type,items)=>items.map(item=>'<article class="package-card"><h3>'+htmlEscape(item.title || (type==='flight' ? [item.direction,item.airline,item.flightNumber].filter(Boolean).join(' · ') : type==='transfer' ? [item.purpose,item.transport].filter(Boolean).join(' · ') : 'Holiday information'))+'</h3><dl>'+packageSchemas[type].filter(([key])=>item[key] && key!=='title' && !(key==='price' && item.clientSellingPrice)).map(([key,label,format])=>'<div><dt>'+htmlEscape(label)+'</dt><dd>'+htmlEscape(format==='date'?formatDate(item[key]):item[key])+'</dd></div>').join('')+'</dl>'+(type==='flight'?renderFlightStops(item):'')+renderWebsiteLink(item,type)+renderSellingPrice(item)+'</article>').join('');
+const renderPackageItems=(type,items)=>items.map(item=>'<article class="package-card"><h3>'+htmlEscape(item.title || (type==='flight' ? [item.direction,item.airline,item.flightNumber].filter(Boolean).join(' · ') : type==='transfer' ? [item.purpose,item.transport].filter(Boolean).join(' · ') : 'Holiday information'))+'</h3><dl>'+packageSchemas[type].filter(([key])=>item[key] && key!=='title' && !(key==='price' && item.clientSellingPrice)).map(([key,label,format])=>'<div><dt>'+htmlEscape(label)+'</dt><dd>'+htmlEscape(format==='date'?formatDate(item[key]):item[key])+'</dd></div>').join('')+'</dl>'+(type==='flight'?renderFlightStops(item):'')+renderWebsiteLink(item,type)+renderSellingPrice(item)+renderGallery(item)+'</article>').join('');
 const renderSections=data=>{
  const sections=[];
- if(sectionEnabled(data,'flight')&&data.flights.length) sections.push(['Getting there','Flights',renderPackageItems('flight',data.flights)]);
- if(sectionEnabled(data,'stay')&&data.stays.length) sections.push(['Your stay','Hotels',renderStays(data.stays)]);
- if(sectionEnabled(data,'transfer')&&data.transfers.length) sections.push(['On the move','Transfers',renderPackageItems('transfer',data.transfers)]);
- if(sectionEnabled(data,'experience')&&data.experiences.length) sections.push(['Discover more','Excursions and itinerary',renderPackageItems('experience',data.experiences)]);
- if(sectionEnabled(data,'day')&&data.days.length) sections.push(['Day by day','Day-to-day itinerary',renderDays(data.days)]);
- if(sectionEnabled(data,'golf')&&(data.golf.length||data.golfNote)) sections.push(['Your rounds','Golf itinerary',renderGolf(data.golf)+(data.golfNote?'<p class="quote-note">'+htmlEscape(data.golfNote)+'</p>':'')]);
- if(sectionEnabled(data,'extra')&&data.extras.length) sections.push(['Made for you','Additional holiday information',renderPackageItems('extra',data.extras)]);
- if(sectionEnabled(data,'advice')&&data.advice?.length) sections.push(['Velvet Edge Travel recommendations','Travel planning & tips','<p class="advice-note">Suggested routes, activities and practical guidance. These are planning suggestions, not confirmed bookings. Check current timings, availability and any stated costs before travelling.</p>'+renderPackageItems('advice',data.advice)]);
+ if(sectionEnabled(data,'flight')&&data.flights.length) sections.push(['flight','Getting there','Flights',renderPackageItems('flight',data.flights)]);
+ if(sectionEnabled(data,'stay')&&data.stays.length) sections.push(['stay','Your stay','Hotels',renderStays(data.stays)]);
+ if(sectionEnabled(data,'transfer')&&data.transfers.length) sections.push(['transfer','On the move','Transfers',renderPackageItems('transfer',data.transfers)]);
+ if(sectionEnabled(data,'experience')&&data.experiences.length) sections.push(['experience','Discover more','Excursions and itinerary',renderPackageItems('experience',data.experiences)]);
+ if(sectionEnabled(data,'day')&&data.days.length) sections.push(['day','Day by day','Day-to-day itinerary',renderDays(data.days)]);
+ if(sectionEnabled(data,'golf')&&(data.golf.length||data.golfNote)) sections.push(['golf','Your rounds','Golf itinerary',renderGolf(data.golf)+(data.golfNote?'<p class="quote-note">'+htmlEscape(data.golfNote)+'</p>':'')]);
+ if(sectionEnabled(data,'extra')&&data.extras.length) sections.push(['extra','Made for you','Additional holiday information',renderPackageItems('extra',data.extras)]);
+ if(sectionEnabled(data,'advice')&&data.advice?.length) sections.push(['advice','Velvet Edge Travel recommendations','Travel planning & tips','<p class="advice-note">Suggested routes, activities and practical guidance. These are planning suggestions, not confirmed bookings. Check current timings, availability and any stated costs before travelling.</p>'+renderPackageItems('advice',data.advice)]);
  const notes=[['exclusions','Not included'],['paymentTerms','Deposit and payment schedule'],['bookingTerms','Booking and cancellation conditions'],['travelNotes','Travel requirements and other notes']].filter(([key])=>data[key]).map(([key,label])=>'<article class="package-card"><h3>'+label+'</h3><p>'+htmlEscape(data[key])+'</p></article>').join('');
- if(notes) sections.push(['Before you book','Important information',notes]);
- return sections.map(([label,title,content],i)=>'<details class="quote-accordion"'+(i===0?' open':'')+'><summary><span class="quote-accordion__number">'+String(i+1).padStart(2,'0')+'</span><span><small>'+label+'</small>'+title+'</span><i aria-hidden="true"></i></summary><div class="quote-accordion__content">'+content+'</div></details>').join('');
+ if(notes) sections.push(['notes','Before you book','Important information',notes]);
+ return sections.map(([key,label,title,content],i)=>'<details data-quote-section="'+key+'" class="quote-accordion"'+(i===0?' open':'')+'><summary><span class="quote-accordion__number">'+String(i+1).padStart(2,'0')+'</span><span><small>'+label+'</small>'+title+'</span><i aria-hidden="true"></i></summary><div class="quote-accordion__content">'+content+'</div></details>').join('');
 };
 
 const journeySummaryFacts = (data) => {
@@ -559,7 +576,7 @@ form.addEventListener('change',refreshJourneySummary);
 
 // Export only client-visible information, never internal pricing or disabled sections.
 const quoteImportSnapshot=data=>{
- const names=['siteUrl','reference','clientName','preparedDate','validUntil','title','intro','location','arrival','nights','guests','hotel','room','board','perPerson','totalPrice','inclusions','golfSummary','golfNote','flightSummary','transferSummary','experienceSummary','daySummary','extraSummary','exclusions','paymentTerms','bookingTerms','travelNotes','agentEmail','agentPhone','quoteType','currency','payingTravellers','coverStyle','coverPosition'];
+ const names=['siteUrl','reference','clientName','preparedDate','validUntil','title','intro','location','arrival','nights','guests','hotel','room','board','perPerson','totalPrice','inclusions','golfSummary','golfNote','flightSummary','transferSummary','experienceSummary','daySummary','extraSummary','exclusions','paymentTerms','bookingTerms','travelNotes','agentEmail','agentPhone','quoteType','currency','payingTravellers','coverStyle','coverPosition','quoteOrder'];
  const result=Object.fromEntries(names.filter(key=>typeof data[key]==='string').map(key=>[key,data[key]]));
  result.format='velvet-edge-client-quote';result.schemaVersion=1;result.pricingMode='manual';result.enabledSections={...data.enabledSections};
  if(data.coverStyle==='photo')result.coverImage=data.coverImage;
@@ -618,7 +635,7 @@ const generateHtml = (data, assets) => {
   const safeReference = htmlEscape(data.reference);
   const mailSubject = encodeURIComponent(`Proposal ${data.reference}`);
 
-  return `<!doctype html>
+  const output = `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -654,6 +671,7 @@ const generateHtml = (data, assets) => {
   <script>document.querySelector("[data-print-quote]")?.addEventListener("click",()=>{document.querySelectorAll(".quote-accordion").forEach(section=>{section.open=true});window.print()});</script>
 </body>
 </html>`;
+  return arrangeQuoteHtml(output,data);
 };
 
 const download = (content, filename, type) => {
@@ -757,6 +775,7 @@ document
       Object.entries(itemKeys).forEach(([type,key])=>{lists[type].replaceChildren();(data[key]||data[type]||[]).forEach(item=>addItem(type,item));});
       syncSections();
       refreshCover();
+      refreshQuoteOrder();
       updateExpectedLink();
       setStatus(isHtml?"HTML quote loaded in manual pricing mode. Review all entries and dates before exporting. Internal items, original costs and markups cannot be recovered from client HTML.":"Editable draft loaded.");
     } catch {
@@ -771,6 +790,7 @@ validUntil.setDate(validUntil.getDate() + 14);
 form.elements.preparedDate.value = today.toISOString().slice(0, 10);
 form.elements.validUntil.value = validUntil.toISOString().slice(0, 10);
 setupCover();
+setupQuoteOrder();
 applyPreset();
 addItem("stay");
 updateExpectedLink();
