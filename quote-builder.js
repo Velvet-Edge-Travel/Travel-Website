@@ -62,8 +62,10 @@ const setStatus = (message, isError = false) => {
 // remain self-contained, including when an older draft is loaded.
 let imageControlId = 0;
 const prepareImage = async (file, maxDimension = 1600) => {
-  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-    throw new Error("Please choose a JPG, PNG or WebP image.");
+  const supportedType = /^(?:image\/(?:jpeg|pjpeg|png|webp|gif|avif|bmp|x-ms-bmp))$/i.test(file.type);
+  const supportedName = /\.(?:jpe?g|jfif|png|webp|gif|avif|bmp)$/i.test(file.name || "");
+  if (!supportedType && !supportedName) {
+    throw new Error("Please choose a JPG, PNG, WebP, GIF, AVIF or BMP image. Convert HEIC/HEIF photos to JPG first.");
   }
   if (file.size > 20 * 1024 * 1024) {
     throw new Error("Please choose an image smaller than 20 MB.");
@@ -72,7 +74,7 @@ const prepareImage = async (file, maxDimension = 1600) => {
   try {
     const image = new Image();
     image.src = url;
-    await image.decode();
+    try { await image.decode(); } catch { throw new Error("This image could not be opened. Save or convert it to JPG or PNG, then try again."); }
     const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
@@ -104,10 +106,10 @@ const setupImageUpload = (item) => {
   const upload = document.createElement("input");
   upload.type = "file";
   upload.id = id;
-  upload.accept = "image/jpeg,image/png,image/webp";
+  upload.accept = "image/jpeg,image/png,image/webp,image/gif,image/avif,image/bmp,.jpg,.jpeg,.jfif,.png,.webp,.gif,.avif,.bmp";
   const help = document.createElement("small");
   help.id = `${id}-help`;
-  help.textContent = "JPG, PNG or WebP, up to 20 MB. Photos are resized and embedded in your quote and editable draft.";
+  help.textContent = "JPG, PNG, WebP, GIF, AVIF or BMP, up to 20 MB. Photos are embedded in your quote; animated images use a still frame.";
   upload.setAttribute("aria-describedby", help.id);
   const message = document.createElement("small");
   message.setAttribute("role", "status");
@@ -143,6 +145,7 @@ const setupImageUpload = (item) => {
     field.value = "";
     refresh();
   });
+  upload.addEventListener("click", () => { upload.value = ""; });
   upload.addEventListener("change", async () => {
     const file = upload.files[0];
     if (!file) return;
@@ -164,7 +167,6 @@ const setupImageUpload = (item) => {
         delete item.dataset.imagePending;
         upload.disabled = false;
         field.disabled = false;
-        upload.value = "";
       }
     }
   });
@@ -190,12 +192,13 @@ const setupCover=()=>{
  document.querySelector('[data-remove-cover]').addEventListener('click',()=>{
   coverRevision++;delete container.dataset.imagePending;upload.disabled=false;upload.value='';form.elements.coverImage.value='';form.elements.coverStyle.value='logo';message.textContent='';refreshCover();
  });
+ upload.addEventListener('click',()=>{upload.value='';});
  upload.addEventListener('change',async()=>{
   const file=upload.files[0];if(!file)return;
   const revision=++coverRevision;container.dataset.imagePending='true';upload.disabled=true;message.textContent='Preparing cover image…';
   try{const value=await prepareImage(file,2400);if(revision!==coverRevision)return;form.elements.coverImage.value=value;message.textContent='Cover image embedded in your quote and draft.';refreshCover();}
   catch(error){if(revision===coverRevision)message.textContent=error.message||'The image could not be loaded.';}
-  finally{if(revision===coverRevision){delete container.dataset.imagePending;upload.disabled=false;upload.value='';}}
+  finally{if(revision===coverRevision){delete container.dataset.imagePending;upload.disabled=false;}}
  });
  refreshCover();
 };
@@ -276,7 +279,7 @@ const addItem = (type, values = {}) => {
   lists[type].append(item);
   if (type === "stay") setupImageUpload(item);
   if (type === "flight") setupFlightStops(item);
-  item.querySelectorAll("[data-key]").forEach((field,index)=>{if(!field.id) field.id = `entry-${++imageControlId}-${index}`; const label=field.parentElement.querySelector("label"); if(label) label.htmlFor=field.id;});
+  item.querySelectorAll("[data-key]").forEach((field,index)=>{if(!field.id) field.id = `entry-${++imageControlId}-${index}`; const label=[...field.parentElement.children].find(el=>el.tagName==="LABEL" && (!el.htmlFor || el.htmlFor===field.id)); if(label) label.htmlFor=field.id;});
   syncSections();
 };
 
