@@ -40,34 +40,6 @@ if ("IntersectionObserver" in window) {
     .forEach((item) => observer.observe(item));
 }
 
-document.querySelectorAll("[data-enquiry-form]").forEach((form) => {
-  const travelType = form.querySelector("[data-travel-type]");
-  const golfFields = form.querySelector("[data-golf-fields]");
-
-  const updateGolfFields = () => {
-    if (!travelType || !golfFields) return;
-
-    const isGolfJourney = travelType.value === "golf";
-    golfFields.hidden = !isGolfJourney;
-    golfFields.querySelectorAll("input, select, textarea").forEach((field) => {
-      field.disabled = !isGolfJourney;
-      field.required =
-        isGolfJourney && field.hasAttribute("data-golf-required");
-    });
-  };
-
-  travelType?.addEventListener("change", updateGolfFields);
-  updateGolfFields();
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const status = form.querySelector(".form-status");
-    status?.classList.add("visible");
-    form.reset();
-    updateGolfFields();
-  });
-});
-
 document.querySelectorAll("[data-year]").forEach((item) => {
   item.textContent = new Date().getFullYear();
 });

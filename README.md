@@ -1,3 +1,7 @@
+## October 2026 website update
+
+See [WEBSITE-UPDATE.md](WEBSITE-UPDATE.md) for the new holiday finder, enquiry delivery options, verification and publishing instructions. The default enquiry flow opens an email to bookings@velvetedgetravel.com and offers a downloadable brief; direct website delivery needs a verified form-service endpoint.
+
 # Velvet Edge Travel
 
 A responsive, multi-page luxury travel website built with plain HTML, CSS and JavaScript. It can be hosted directly on GitHub Pages without a build step.
@@ -38,9 +42,9 @@ GitHub Pages is public hosting. A hard-to-guess URL and `noindex` tag reduce cas
 
 ## Before publishing
 
-- Replace the demonstration contact details and Mayfair address with the company's real information.
+- Confirm the contact details and existing service claims before publishing. The local demonstration address has been removed.
 - Replace or self-host the remote Unsplash imagery if required.
-- Connect the contact form to Formspree, Netlify Forms or a custom backend. It currently displays a demonstration confirmation and does not transmit data.
+- For direct form delivery, configure and test the endpoint described in WEBSITE-UPDATE.md. The demonstration confirmation has been replaced with an explicit email-app workflow.
 - Add real privacy, terms and booking-condition pages and update the footer links.
 - Replace the placeholder Instagram link.
 

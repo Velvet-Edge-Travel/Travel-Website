@@ -9,8 +9,8 @@
     />
     <title>Signature Holidays | Velvet Edge Travel</title>
     <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
+  <link rel="stylesheet" href="experience.css"></head>
+  <body><a class="skip-link" href="#main-content">Skip to content</a>
     <header class="site-header">
       <nav class="nav container">
         <a class="brand" href="index.html"
@@ -22,24 +22,17 @@
             height="56"
           /><span class="brand__name">Velvet Edge Travel</span></a
         ><button
-          class="nav-toggle"
+          class="nav-toggle" aria-controls="main-navigation"
           type="button"
           aria-label="Open navigation"
           aria-expanded="false"
         >
           <span></span><span></span>
         </button>
-        <div class="nav__links">
-          <a href="index.html">Home</a><a href="about.html">About</a
-          ><a class="active" href="signature-holidays.html"
-            >Signature Holidays</a
-          ><a href="golf-packages.html">Golf</a
-          ><a href="destinations.html">Destinations</a
-          ><a class="nav__cta" href="contact.html">Plan a journey</a>
-        </div>
+        <div class="nav__links" id="main-navigation"><a href="holidays.html">Find a holiday</a><a href="golf-packages.html">Golf journeys</a><a href="destinations.html">Destinations</a><a href="about.html">Our story</a><a href="holidays.html?saved=1">Saved <span data-saved-count>0</span></a><a class="nav__cta" href="contact.html">Plan my journey</a></div>
       </nav>
     </header>
-    <main>
+    <main id="main-content">
       <section
         class="hero page-hero"
         style="
@@ -48,7 +41,7 @@
       >
         <div class="hero__content container">
           <p class="eyebrow">Our signature collection</p>
-          <h1>Journeys with a <span>sense of wonder.</span></h1>
+          <h1>Journeys with a <span>sense of wonder.</span></h1><a class="btn btn--gold" href="holidays.html">Browse &amp; filter the collection</a>
           <p class="hero__copy">
             Imaginative starting points, designed to be reshaped around you.
           </p>
@@ -69,7 +62,7 @@
         <div class="container">
           <article class="package" data-reveal>
             <div class="package__image">
-              <img
+              <img loading="lazy"
                 src="https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=1300&q=85"
                 alt="Greek island coastline"
               />
@@ -85,14 +78,14 @@
                 <span>Duration<strong>12 nights</strong></span
                 ><span>Best for<strong>May to October</strong></span
                 ><span>Style<strong>Coast &amp; culture</strong></span
-                ><span>From<strong>£8,950 pp</strong></span>
+                ><span>Quotation<strong>Tailored to you</strong></span>
               </div>
-              <a class="text-link" href="contact.html">Tailor this journey</a>
+              <a class="text-link" href="holiday.html?id=aegean-islands">Explore this journey</a>
             </div>
           </article>
           <article class="package" data-reveal>
             <div class="package__image">
-              <img
+              <img loading="lazy"
                 src="https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&w=1300&q=85"
                 alt="Rainforest canopy in Costa Rica"
               />
@@ -108,14 +101,14 @@
                 <span>Duration<strong>13 nights</strong></span
                 ><span>Best for<strong>December to April</strong></span
                 ><span>Style<strong>Wildlife &amp; adventure</strong></span
-                ><span>From<strong>£7,600 pp</strong></span>
+                ><span>Quotation<strong>Tailored to you</strong></span>
               </div>
-              <a class="text-link" href="contact.html">Tailor this journey</a>
+              <a class="text-link" href="holiday.html?id=costa-rica">Explore this journey</a>
             </div>
           </article>
           <article class="package" data-reveal>
             <div class="package__image">
-              <img
+              <img loading="lazy"
                 src="https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=1300&q=85"
                 alt="Patagonian mountain landscape"
               />
@@ -131,14 +124,14 @@
                 <span>Duration<strong>15 nights</strong></span
                 ><span>Best for<strong>October to March</strong></span
                 ><span>Style<strong>Epic landscapes</strong></span
-                ><span>From<strong>£11,200 pp</strong></span>
+                ><span>Quotation<strong>Tailored to you</strong></span>
               </div>
-              <a class="text-link" href="contact.html">Tailor this journey</a>
+              <a class="text-link" href="holiday.html?id=patagonia">Explore this journey</a>
             </div>
           </article>
           <article class="package" data-reveal>
             <div class="package__image">
-              <img
+              <img loading="lazy"
                 src="https://images.unsplash.com/photo-1505881502353-a1986add3762?auto=format&fit=crop&w=1300&q=85"
                 alt="Temple and palms in Bali"
               />
@@ -154,9 +147,9 @@
                 <span>Duration<strong>14 nights</strong></span
                 ><span>Best for<strong>April to October</strong></span
                 ><span>Style<strong>Wellbeing &amp; beach</strong></span
-                ><span>From<strong>£6,800 pp</strong></span>
+                ><span>Quotation<strong>Tailored to you</strong></span>
               </div>
-              <a class="text-link" href="contact.html">Tailor this journey</a>
+              <a class="text-link" href="holiday.html?id=bali">Explore this journey</a>
             </div>
           </article>
         </div>
@@ -194,7 +187,7 @@
           </div>
         </div>
       </section>
-      <section class="cta-band">
+      <p class="container price-context">Every journey is individually designed and quoted. Enquire with your preferred dates and requirements to receive a tailored proposal.</p><section class="cta-band">
         <div class="cta-band__inner container">
           <h2>Your journey begins with a conversation.</h2>
           <a class="btn btn--gold" href="contact.html">Share your ideas</a>
@@ -205,7 +198,7 @@
       <div class="footer__main container">
         <div class="footer__about">
           <a class="brand" href="index.html"
-            ><img
+            ><img loading="lazy"
               class="brand__mark"
               src="velvet-edge-logo-v3.svg"
               alt=""
@@ -227,17 +220,14 @@
         </div>
         <div class="footer__column">
           <h4>Concierge</h4>
-          <a href="tel:+447957644502">+44&nbsp;(0)77957&nbsp;644&nbsp;502</a
-          ><a href="mailto:bookings@velvetedgetravel.com"
-            >bookings@velvetedgetravel.com</a
-          >
+          <a href="contact.html">Plan a journey</a><a href="contact.html">Travel enquiries</a>
         </div>
       </div>
       <div class="footer__bottom container">
         <span>© <span data-year></span> Velvet Edge Travel.</span
-        ><span>Privacy · Terms · Booking Conditions</span>
+        ><span><a href="contact.html#enquiry-information">Enquiry information</a> · <a href="holidays.html">Holiday collection</a></span>
       </div>
     </footer>
-    <script src="script.js"></script>
+    <script src="site-config.js"></script><script src="holidays-data.js"></script><script src="script.js"></script><script src="experience.js"></script>
   </body>
 </html>

@@ -9,8 +9,8 @@
     />
     <title>Luxury Golf Packages | Velvet Edge Travel</title>
     <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
+  <link rel="stylesheet" href="experience.css"></head>
+  <body><a class="skip-link" href="#main-content">Skip to content</a>
     <header class="site-header">
       <nav class="nav container">
         <a class="brand" href="index.html"
@@ -22,23 +22,17 @@
             height="56"
           /><span class="brand__name">Velvet Edge Travel</span></a
         ><button
-          class="nav-toggle"
+          class="nav-toggle" aria-controls="main-navigation"
           type="button"
           aria-label="Open navigation"
           aria-expanded="false"
         >
           <span></span><span></span>
         </button>
-        <div class="nav__links">
-          <a href="index.html">Home</a><a href="about.html">About</a
-          ><a href="signature-holidays.html">Signature Holidays</a
-          ><a class="active" href="golf-packages.html">Golf</a
-          ><a href="destinations.html">Destinations</a
-          ><a class="nav__cta" href="contact.html">Plan a journey</a>
-        </div>
+        <div class="nav__links" id="main-navigation"><a href="holidays.html">Find a holiday</a><a href="golf-packages.html">Golf journeys</a><a href="destinations.html">Destinations</a><a href="about.html">Our story</a><a href="holidays.html?saved=1">Saved <span data-saved-count>0</span></a><a class="nav__cta" href="contact.html?type=golf">Plan my journey</a></div>
       </nav>
     </header>
-    <main>
+    <main id="main-content">
       <section
         class="hero page-hero"
         style="
@@ -47,7 +41,7 @@
       >
         <div class="hero__content container">
           <p class="eyebrow">Velvet Edge Golf</p>
-          <h1>Great courses.<br /><span>Unforgettable settings.</span></h1>
+          <h1>Great courses.<br /><span>Unforgettable settings.</span></h1><a class="btn btn--gold" href="holidays.html?style=Golf">Browse &amp; filter the collection</a>
           <p class="hero__copy">
             Tee times worth travelling for, paired with exceptional stays and
             everything beyond the fairway.
@@ -70,10 +64,10 @@
               equally considered, with spa, culture and culinary experiences
               designed around the day.
             </p>
-            <a class="btn btn--dark" href="contact.html">Create my golf trip</a>
+            <a class="btn btn--dark" href="contact.html?type=golf">Create my golf trip</a>
           </div>
           <div class="intro-grid__image" data-reveal>
-            <img
+            <img loading="lazy"
               src="https://images.unsplash.com/photo-1535131749006-b7f58c99034b?auto=format&fit=crop&w=1200&q=85"
               alt="Golfer on a coastal course"
             />
@@ -90,7 +84,7 @@
           </div>
           <div class="grid grid--3">
             <article class="destination-card" data-reveal>
-              <img
+              <img loading="lazy"
                 src="https://images.unsplash.com/photo-1593111774240-d529f12cf4bb?auto=format&fit=crop&w=1000&q=85"
                 alt="Links golf course in Scotland"
               />
@@ -104,13 +98,13 @@
                 <div class="tags">
                   <span class="tag">5 rounds</span
                   ><span class="tag">Private driver</span
-                  ><span class="tag">From £5,950</span>
+                  ><span class="tag">Tailored quotation</span>
                 </div>
-                <a class="text-link" href="contact.html">Enquire</a>
+                <a class="text-link" href="holiday.html?id=scotland-golf">Explore this journey</a>
               </div>
             </article>
             <article class="destination-card" data-reveal>
-              <img
+              <img loading="lazy"
                 src="https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=1000&q=85"
                 alt="Dramatic Algarve coast"
               />
@@ -124,13 +118,13 @@
                 <div class="tags">
                   <span class="tag">4 rounds</span
                   ><span class="tag">5-star resort</span
-                  ><span class="tag">From £3,850</span>
+                  ><span class="tag">Tailored quotation</span>
                 </div>
-                <a class="text-link" href="contact.html">Enquire</a>
+                <a class="text-link" href="holiday.html?id=algarve-golf">Explore this journey</a>
               </div>
             </article>
             <article class="destination-card" data-reveal>
-              <img
+              <img loading="lazy"
                 src="https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&w=1000&q=85"
                 alt="Lush South African landscape"
               />
@@ -144,9 +138,9 @@
                 <div class="tags">
                   <span class="tag">5 rounds</span
                   ><span class="tag">Safari</span
-                  ><span class="tag">From £7,750</span>
+                  ><span class="tag">Tailored quotation</span>
                 </div>
-                <a class="text-link" href="contact.html">Enquire</a>
+                <a class="text-link" href="holiday.html?id=cape-golf">Explore this journey</a>
               </div>
             </article>
           </div>
@@ -192,10 +186,10 @@
           </div>
         </div>
       </section>
-      <section class="cta-band">
+      <p class="container price-context">Every journey is individually designed and quoted. Enquire with your preferred dates and requirements to receive a tailored proposal.</p><section class="cta-band">
         <div class="cta-band__inner container">
           <h2>Tell us where you want to tee off.</h2>
-          <a class="btn btn--gold" href="contact.html">Plan a golf journey</a>
+          <a class="btn btn--gold" href="contact.html?type=golf">Plan a golf journey</a>
         </div>
       </section>
     </main>
@@ -203,7 +197,7 @@
       <div class="footer__main container">
         <div class="footer__about">
           <a class="brand" href="index.html"
-            ><img
+            ><img loading="lazy"
               class="brand__mark"
               src="velvet-edge-logo-v3.svg"
               alt=""
@@ -221,21 +215,18 @@
         </div>
         <div class="footer__column">
           <h4>Company</h4>
-          <a href="about.html">About</a><a href="contact.html">Contact</a>
+          <a href="about.html">About</a><a href="contact.html?type=golf">Contact</a>
         </div>
         <div class="footer__column">
           <h4>Concierge</h4>
-          <a href="tel:+447957644502">+44&nbsp;(0)7957&nbsp;644&nbsp;502</a
-          ><a href="mailto:bookings@velvetedgetravel.com"
-            >bookings@velvetedgetravel.com</a
-          >
+          <a href="contact.html?type=golf">Plan a journey</a><a href="contact.html?type=golf">Travel enquiries</a>
         </div>
       </div>
       <div class="footer__bottom container">
         <span>© <span data-year></span> Velvet Edge Travel.</span
-        ><span>Privacy · Terms · Booking Conditions</span>
+        ><span><a href="contact.html#enquiry-information">Enquiry information</a> · <a href="holidays.html">Holiday collection</a></span>
       </div>
     </footer>
-    <script src="script.js"></script>
+    <script src="site-config.js"></script><script src="holidays-data.js"></script><script src="script.js"></script><script src="experience.js"></script>
   </body>
 </html>

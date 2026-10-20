@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Explore holidays | Velvet Edge Travel</title><meta name="description" content="Explore the Velvet Edge holiday collection and create a personal travel enquiry."><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="experience.css"></head><body><a class="skip-link" href="#main-content">Skip to content</a><header class="site-header">
+      <nav class="nav container" aria-label="Main navigation">
+        <a class="brand" href="index.html" aria-label="Velvet Edge Travel home"
+          ><img
+            class="brand__mark"
+            src="velvet-edge-logo-v3.svg"
+            alt=""
+            width="150"
+            height="56"
+          /><span class="brand__name">Velvet Edge Travel</span></a
+        >
+        <button
+          class="nav-toggle" aria-controls="main-navigation"
+          type="button"
+          aria-label="Open navigation"
+          aria-expanded="false"
+        >
+          <span></span><span></span>
+        </button>
+        <div class="nav__links" id="main-navigation"><a href="holidays.html" aria-current="page">Find a holiday</a><a href="golf-packages.html">Golf journeys</a><a href="destinations.html">Destinations</a><a href="about.html">Our story</a><a href="holidays.html?saved=1">Saved <span data-saved-count>0</span></a><a class="nav__cta" href="contact.html">Plan my journey</a></div>
+      </nav>
+    </header><main id="main-content"><section class="hero page-hero collection-hero" style="--hero:url('https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=1800&q=85')"><div class="hero__content container"><p class="eyebrow">The Velvet Edge collection</p><h1>Somewhere <span>extraordinary.</span></h1><p class="hero__copy">A coast to unwind on. A course worth travelling for. A journey entirely your own.</p><a href="#collection" class="btn btn--gold">Find your holiday</a></div></section><section class="section collection-section" id="collection"><div class="container">
+<div class="collection-toolbar"><div><p class="eyebrow">Your next chapter</p><h2>Find a journey that feels like you.</h2></div><a href="holidays.html?saved=1" class="text-link">Your saved journeys <span data-saved-count>0</span></a></div>
+<form class="holiday-filters" data-holiday-filters role="search" aria-label="Find holidays">
+<label>Search destinations or experiences<input name="q" type="search" placeholder="Try Japan, safari or golf"></label>
+<label>Region<select name="region"><option value="">Everywhere</option><option>Europe</option><option>Africa</option><option>Asia</option><option>Latin America</option><option>North America</option><option>Indian Ocean</option></select></label>
+<label>Holiday style<select name="style"><option value="">All styles</option><option>Coast &amp; culture</option><option>Wildlife &amp; adventure</option><option>Epic landscapes</option><option>Wellbeing &amp; beach</option><option>Golf</option></select></label>
+<label>Duration<select name="duration"><option value="">Any length</option><option value="short">Up to 7 nights</option><option value="medium">8–14 nights</option><option value="long">15+ nights</option></select></label>
+<label>Sort by<select name="sort"><option value="recommended">Our collection</option><option value="duration">Duration: short to long</option></select></label>
+<label class="saved-filter"><input type="checkbox" name="saved"> Saved journeys only</label>
+<button type="reset" class="quiet-button">Clear filters</button></form>
+<div class="results-meta"><p data-results-status role="status" aria-live="polite"></p><span>Every journey is tailor-made · Enquire for your personal quote</span></div>
+<div class="holiday-grid" data-holiday-grid></div>
+<noscript><p>Please enable JavaScript for the interactive finder. You can still browse <a href="signature-holidays.html">signature holidays</a>, <a href="golf-packages.html">golf journeys</a> and <a href="contact.html">make an enquiry</a>.</p></noscript>
+<div class="collection-help"><div><h3>Not quite your kind of escape?</h3><p>Tell us the feeling, the occasion or simply the month. We can start there.</p></div><a class="btn btn--dark" href="contact.html">Design something personal</a></div></div></section></main><footer class="site-footer">
+      <div class="footer__main container">
+        <div class="footer__about">
+          <a class="brand" href="index.html"
+            ><img loading="lazy"
+              class="brand__mark"
+              src="velvet-edge-logo-v3.svg"
+              alt=""
+              width="150"
+              height="56"
+            /><span class="brand__name">Velvet Edge Travel</span></a
+          >
+          <p>
+            Exceptional private travel, thoughtfully designed in London and
+            experienced across the world.
+          </p>
+        </div>
+        <div class="footer__column">
+          <h4>Explore</h4>
+          <a href="signature-holidays.html">Signature Holidays</a
+          ><a href="golf-packages.html">Golf Packages</a
+          ><a href="destinations.html">Destinations</a>
+        </div>
+        <div class="footer__column">
+          <h4>Company</h4>
+          <a href="about.html">About Velvet Edge</a
+          ><a href="contact.html">Contact</a
+          ><a href="contact.html">Travel Enquiry</a>
+        </div>
+        <div class="footer__column">
+          <h4>Concierge</h4>
+          <a href="contact.html">Plan a journey</a><a href="contact.html">Travel enquiries</a>
+        </div>
+      </div>
+      <div class="footer__bottom container">
+        <span
+          >© <span data-year></span> Velvet Edge Travel. All rights
+          reserved.</span
+        ><span><a href="contact.html#enquiry-information">Enquiry information</a> · <a href="holidays.html">Holiday collection</a></span>
+      </div>
+    </footer><script src="site-config.js"></script><script src="holidays-data.js"></script><script src="script.js"></script><script src="experience.js"></script></body></html>
