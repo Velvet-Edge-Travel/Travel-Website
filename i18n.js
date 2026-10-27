@@ -139,6 +139,11 @@
   const indexFor = locale => ["fr", "de", "es", "it"].indexOf(locale);
   const currentLocale = () => document.documentElement.lang || "en";
   const translated = (source, locale) => {
+    const generated = window.VELVET_I18N_CATALOG?.[locale];
+    if (generated) {
+      const key = Object.keys(window.VELVET_I18N_CATALOG.en || {}).find(candidate => window.VELVET_I18N_CATALOG.en[candidate] === source.trim());
+      if (key && generated[key]) return generated[key];
+    }
     const entry = translations[source.trim()];
     const index = indexFor(locale);
     return entry && index >= 0 ? entry[index] : source;
@@ -165,6 +170,10 @@
       ["aria-label", "placeholder", "title"].forEach(attribute => {
         const source = element.dataset[`i18n${attribute.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())}`] || element.getAttribute(attribute);
         element.dataset[`i18n${attribute.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())}`] = source;
+        const generated = window.VELVET_I18N_CATALOG?.[locale];
+        const key = Object.keys(window.VELVET_I18N_CATALOG?.en || {}).find(candidate => window.VELVET_I18N_CATALOG.en[candidate] === source);
+        const generatedValue = key && generated?.[key];
+        if (generatedValue) { element.setAttribute(attribute, generatedValue); return; }
         const entry = attributeTranslations[source];
         const index = indexFor(locale);
         if (entry && index >= 0) element.setAttribute(attribute, entry[index]);
