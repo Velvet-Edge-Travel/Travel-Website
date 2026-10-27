@@ -6,6 +6,12 @@ The public site now has an accessible language selector in the global header for
 
 `build-i18n-catalog.mjs` generates 841 page-specific keys from the nine public pages. English source text is in `locales/en.json`; add approved copy under the matching keys in `locales/fr.json`, `locales/de.json`, `locales/es.json` and `locales/it.json`, then run `node build-i18n-catalog.mjs` again to publish it to `i18n-catalog.js`. Existing translated values are retained when the catalogue is refreshed.
 
+## Machine translation for review
+
+The on-site language selector uses Google Translate to translate all rendered public-page, enquiry, privacy and legal content into French, German, Spanish and Italian. This includes text not yet populated in the local catalogue. It requires a visitor internet connection and sends the public page text to Google Translate; no enquiry form entries are translated or transmitted by this integration.
+
+Review all translated legal, privacy, booking and commercial wording with qualified advisers before publishing it as final copy.
+
 ## Translated now
 
 - Global navigation, footer navigation, common calls to action, saved-journey actions and key accessibility labels.

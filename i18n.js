@@ -138,6 +138,7 @@
   const originalText = new WeakMap();
   const indexFor = locale => ["fr", "de", "es", "it"].indexOf(locale);
   const currentLocale = () => document.documentElement.lang || "en";
+  let googleTranslateReady = false;
   const translated = (source, locale) => {
     const generated = window.VELVET_I18N_CATALOG?.[locale];
     if (generated) {
@@ -188,7 +189,7 @@
     document.documentElement.lang = locale;
     document.documentElement.dir = "ltr";
     document.querySelectorAll("[data-language-picker]").forEach(picker => picker.value = locale);
-    translateTree();
+    if (googleTranslateReady) applyGoogleLocale(locale);
     document.dispatchEvent(new CustomEvent("velvet:localechange", { detail: { locale } }));
   };
   const addPicker = () => {
@@ -211,8 +212,34 @@
   };
   const addStyles = () => {
     const style = document.createElement("style");
-    style.textContent = '.language-picker{display:inline-flex;align-items:center;margin-left:auto;color:inherit}.language-picker select{min-height:34px;max-width:94px;padding:0 24px 0 9px;border:1px solid currentColor;border-radius:0;color:inherit;background:transparent;font-size:.68rem;font-weight:600;letter-spacing:.06em;cursor:pointer}.language-picker option{color:#12100e;background:#fff}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@media (max-width:1000px){.language-picker{margin-left:auto}.nav{gap:10px}.language-picker select{max-width:72px;padding-left:6px;font-size:.62rem}}';
+    style.textContent = '.language-picker{display:inline-flex;align-items:center;margin-left:auto;color:inherit}.language-picker select{min-height:34px;max-width:94px;padding:0 24px 0 9px;border:1px solid currentColor;border-radius:0;color:inherit;background:transparent;font-size:.68rem;font-weight:600;letter-spacing:.06em;cursor:pointer}.language-picker option{color:#12100e;background:#fff}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}#google_translate_element{display:none!important}.goog-te-banner-frame.skiptranslate{display:none!important}body{top:0!important}@media (max-width:1000px){.language-picker{margin-left:auto}.nav{gap:10px}.language-picker select{max-width:72px;padding-left:6px;font-size:.62rem}}';
     document.head.append(style);
+  };
+  const applyGoogleLocale = locale => {
+    if (locale === "en") { location.reload(); return; }
+    const select = document.querySelector(".goog-te-combo");
+    if (!select) { setTimeout(() => applyGoogleLocale(locale), 100); return; }
+    select.value = locale;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  const initialiseGoogleTranslate = () => {
+    const host = document.createElement("div");
+    host.id = "google_translate_element";
+    document.body.append(host);
+    window.googleTranslateElementInit = () => {
+      window.google?.translate?.TranslateElement && new window.google.translate.TranslateElement({
+        pageLanguage: "en",
+        includedLanguages: "fr,de,es,it",
+        autoDisplay: false,
+      }, host.id);
+      googleTranslateReady = true;
+      if (currentLocale() !== "en") applyGoogleLocale(currentLocale());
+    };
+    const script = document.createElement("script");
+    script.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+    script.async = true;
+    script.onerror = () => { googleTranslateReady = false; };
+    document.head.append(script);
   };
   const initialLocale = (() => {
     try { const saved = localStorage.getItem(storageKey); if (locales[saved]) return saved; } catch {}
@@ -222,13 +249,6 @@
   addStyles();
   document.documentElement.lang = initialLocale;
   addPicker();
-  translateTree();
-  new MutationObserver(records => {
-    if (currentLocale() === "en") return;
-    records.forEach(record => record.addedNodes.forEach(node => {
-      if (node.nodeType === Node.ELEMENT_NODE) translateTree(node);
-      if (node.nodeType === Node.TEXT_NODE && node.parentElement) translateTree(node.parentElement);
-    }));
-  }).observe(document.body, { childList: true, subtree: true });
+  initialiseGoogleTranslate();
   window.VelvetI18n = { getLocale: currentLocale, setLocale, translate: translateTree, locales };
 })();
