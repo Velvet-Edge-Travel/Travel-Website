@@ -6,7 +6,7 @@ The public site now has an accessible language selector in the global header for
 
 - Global navigation, footer navigation, common calls to action, saved-journey actions and key accessibility labels.
 - Core journey discovery and enquiry interface labels.
-- Key landing-page, destination, golf and collection headings.
+- Key landing-page, about, destination, golf, signature collection and enquiry-page headings.
 
 ## Content still authored in English
 
