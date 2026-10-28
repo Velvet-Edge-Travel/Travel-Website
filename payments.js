@@ -15,6 +15,7 @@
   let travellers = loadTravellers();
   let quotes = loadQuotes();
   let editingId = null;
+  let duplicateSource = null;
   let preferredQuoteId = travellers[0]?.quoteId || quotes[0]?.id || "";
 
   function loadTravellers() {
@@ -28,6 +29,13 @@
 
   function isValidRecord(record) {
     return record && typeof record === "object" && typeof record.name === "string" && Array.isArray(record.installments);
+  }
+
+  function duplicateTravellerRecord(traveller) {
+    const copy = JSON.parse(JSON.stringify(traveller));
+    copy.id = "";
+    copy.name = "";
+    return copy;
   }
 
   function loadQuotes() {
@@ -312,7 +320,7 @@
       <div class="traveller-card__details">
         <table class="schedule-table"><thead><tr><th>Payment</th><th>Amount</th><th>Due</th><th>Paid</th><th>Status</th><th>Payment link</th></tr></thead><tbody>${installmentRows(traveller)}</tbody></table>
         ${terms}${adjustmentHistory(traveller)}${notes}
-        <div class="traveller-card__actions"><button class="mini-action" type="button" data-action="share" data-traveller="${escapeHtml(traveller.id)}">Create customer link</button><button class="mini-action" type="button" data-action="export" data-traveller="${escapeHtml(traveller.id)}">Download summary</button><button class="mini-action" type="button" data-action="edit" data-traveller="${escapeHtml(traveller.id)}">Edit details</button><button class="mini-action mini-action--danger" type="button" data-action="delete" data-traveller="${escapeHtml(traveller.id)}">Remove</button></div>
+        <div class="traveller-card__actions"><button class="mini-action" type="button" data-action="share" data-traveller="${escapeHtml(traveller.id)}">Create customer link</button><button class="mini-action" type="button" data-action="export" data-traveller="${escapeHtml(traveller.id)}">Download summary</button><button class="mini-action" type="button" data-action="duplicate" data-traveller="${escapeHtml(traveller.id)}">Duplicate payment</button><button class="mini-action" type="button" data-action="edit" data-traveller="${escapeHtml(traveller.id)}">Edit details</button><button class="mini-action mini-action--danger" type="button" data-action="delete" data-traveller="${escapeHtml(traveller.id)}">Remove</button></div>
       </div>
     </article>`;
   }
@@ -382,9 +390,11 @@
     installmentFields.replaceChildren();
     clearError();
     editingId = null;
+    duplicateSource = null;
     form.dataset.quotePrefill = "";
     document.querySelector("#adjustment-reason-field").hidden = true;
     document.querySelector("#adjustment-history").hidden = true;
+    document.querySelector("#duplicate-warning").hidden = true;
     refreshQuoteOptions(preferredQuoteId);
     document.querySelector("#dialog-title").textContent = "Add a traveller";
     const submit = form.querySelector('[type="submit"]');
@@ -393,7 +403,8 @@
     refreshScheduleTotal();
   }
 
-  function openEditor(traveller = null) {
+  function openEditor(traveller = null, options = {}) {
+    const duplicate = options.duplicate === true;
     if (!quotes.length && !traveller) {
       announce("Import the sent quote or its JSON draft before adding travellers.");
       quoteFile.click();
@@ -401,22 +412,24 @@
     }
     clearForm();
     if (traveller) {
-      editingId = traveller.id;
+      duplicateSource = duplicate ? duplicateTravellerRecord(traveller) : null;
+      editingId = duplicate ? null : traveller.id;
       preferredQuoteId = traveller.quoteId || "";
       refreshQuoteOptions(preferredQuoteId);
-      document.querySelector("#dialog-title").textContent = "Edit traveller";
-      form.querySelector('[type="submit"]').textContent = "Save changes";
-      form.elements.name.value = traveller.name;
+      document.querySelector("#dialog-title").textContent = duplicate ? "Duplicate traveller payment" : "Edit traveller";
+      form.querySelector('[type="submit"]').textContent = duplicate ? "Save duplicate" : "Save changes";
+      form.elements.name.value = duplicate ? "" : traveller.name;
       form.elements.total.value = traveller.total;
       form.elements.currency.value = traveller.currency;
       form.elements.quoteUrl.value = traveller.quoteUrl || "";
       form.elements.terms.value = traveller.terms || "";
       form.elements.notes.value = traveller.notes || "";
       form.elements.adjustmentReason.value = "";
-      document.querySelector("#adjustment-reason-field").hidden = false;
+      document.querySelector("#adjustment-reason-field").hidden = duplicate;
       const history = document.querySelector("#adjustment-history");
       history.innerHTML = adjustmentHistory(traveller);
       history.hidden = !traveller.adjustments?.length;
+      document.querySelector("#duplicate-warning").hidden = !duplicate;
       installmentFields.replaceChildren();
       traveller.installments.forEach(addInstallment);
     }
@@ -438,6 +451,7 @@
     const notes = form.elements.notes.value.trim();
     const quote = quotes.find((item) => item.id === form.elements.quoteId.value);
     const existingRecord = travellers.find((item) => item.id === editingId);
+    const sourceRecord = existingRecord || duplicateSource;
     const quoteUrl = form.elements.quoteUrl.value.trim();
     const installments = readInstallments();
     if (!quote) return { error: "Import and select the quote this traveller belongs to." };
@@ -463,14 +477,14 @@
         quoteTitle: quote.title,
         destination: quote.destination,
         quoteUrl,
-        originalQuotePerPerson: existingRecord?.originalQuotePerPerson || quote.originalPerPerson || "",
-        originalQuotePerPersonText: existingRecord?.originalQuotePerPersonText || quote.originalPerPersonText || "",
+        originalQuotePerPerson: sourceRecord?.originalQuotePerPerson || quote.originalPerPerson || "",
+        originalQuotePerPersonText: sourceRecord?.originalQuotePerPersonText || quote.originalPerPersonText || "",
         name,
         total: (cents(total) / 100).toFixed(2),
         currency,
         terms,
         notes,
-        adjustments: existingRecord?.adjustments || [],
+        adjustments: sourceRecord?.adjustments || [],
         installments: installments.map((installment) => ({
           label: installment.label,
           amount: (cents(installment.amount) / 100).toFixed(2),
@@ -717,6 +731,9 @@
     switch (button.dataset.action) {
       case "edit":
         openEditor(traveller);
+        break;
+      case "duplicate":
+        openEditor(traveller, { duplicate: true });
         break;
       case "delete":
         if (window.confirm(`Remove the payment record for ${traveller.name} from this browser?`)) {

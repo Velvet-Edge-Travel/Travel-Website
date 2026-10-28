@@ -77,6 +77,7 @@
     <dialog class="traveller-dialog" id="traveller-dialog" aria-labelledby="dialog-title">
       <form id="traveller-form" method="dialog" novalidate>
         <div class="dialog-heading"><div><p class="eyebrow">Payment details</p><h2 id="dialog-title">Add a traveller</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button></div>
+        <p class="duplicate-warning" id="duplicate-warning" role="note" hidden>This copy keeps the original payment amounts, paid status, Revolut links, transaction references, notes and adjustment history. The traveller name is blank. Saving adds the copied amounts to the dashboard totals. Review the payment status, links and any private notes before saving.</p>
         <div class="form-grid">
           <label class="field field--wide"><span>Linked quote</span><select name="quoteId" required><option value="">Import or select a quote…</option></select></label>
           <label class="field"><span>Quote reference</span><input name="quoteRef" readonly required /></label>

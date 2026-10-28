@@ -60,6 +60,8 @@ After entering a traveller’s agreed total, instalments, due dates, Revolut pay
 
 On an existing traveller, edit the agreed total, each instalment amount and the cumulative amount received after checking Revolut Business. The instalments must still add up to the agreed total and each received amount must be within its instalment. If you change payment figures, add an internal reason; the tracker logs the date, reason and before/after totals and amount paid. This is a manual adjustment record, not an automatic Revolut transaction feed.
 
+Choose **Duplicate payment** on a traveller card to create a copy with the name cleared. It copies the quote, amounts, paid status, payment dates and links, references, notes and adjustment history. The copied financial values count as a separate traveller record after saving, so review them and replace the copied Revolut links or payment details where needed.
+
 Do not commit traveller records, exported summaries, encrypted links or passphrases to the Git repository. Verify every HTTPS payment URL, amount, currency and due date before sharing. For revocable links, real sign-in, or shared team records, move the dashboard data to an authenticated backend before using those workflows.
 
 ## Local preview
