@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="description" content="Encrypted, individual payment summary from Velvet Edge Travel." />
+    <title>Payment summary | Velvet Edge Travel</title>
+    <link rel="icon" href="velvet-edge-logo-v3.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="payment-view.css" />
+  </head>
+  <body>
+    <header class="summary-header"><a href="https://www.velvetedgetravel.com" aria-label="Velvet Edge Travel home"><img src="velvet-edge-logo-v3.svg" alt="" /><span>Velvet Edge <em>Travel</em></span></a></header>
+    <main class="summary-main">
+      <section class="unlock-card" id="unlock-card" aria-labelledby="summary-heading">
+        <p class="eyebrow">Your personal payment schedule</p>
+        <h1 id="summary-heading">A secure summary, just for you</h1>
+        <p>This payment summary is encrypted. Enter the passphrase Velvet Edge Travel sent to you separately to view your quote and payment schedule.</p>
+        <form id="unlock-form" novalidate>
+          <label for="share-passphrase">Passphrase</label>
+          <input id="share-passphrase" name="passphrase" type="password" autocomplete="current-password" required />
+          <button type="submit">View payment summary</button>
+          <p id="unlock-status" role="status" aria-live="polite"></p>
+        </form>
+        <p class="security-note">Your passphrase is processed in this browser and is not sent to Velvet Edge Travel or the website host.</p>
+      </section>
+      <article class="customer-summary" id="customer-summary" hidden></article>
+      <footer class="summary-footer"><a href="mailto:bookings@velvetedgetravel.com">bookings@velvetedgetravel.com</a><span>·</span><a href="https://www.velvetedgetravel.com">velvetedgetravel.com</a></footer>
+    </main>
+    <script src="payment-summary.js" defer></script>
+  </body>
+</html>

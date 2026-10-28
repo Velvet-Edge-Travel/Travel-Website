@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="description" content="Private, browser-based payment tracker for Velvet Edge Travel." />
+    <meta name="theme-color" content="#171512" />
+    <title>Payment Tracker | Velvet Edge Travel</title>
+    <link rel="icon" href="velvet-edge-logo-v3.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="payments.css" />
+  </head>
+  <body class="payment-app">
+    <header class="payment-header">
+      <a class="payment-brand" href="index.html" aria-label="Velvet Edge Travel home">
+        <img src="velvet-edge-logo-v3.svg" alt="" />
+        <span>Velvet Edge <em>Travel</em></span>
+      </a>
+      <span class="payment-header__label">Private payment tracker</span>
+    </header>
+
+    <main class="payment-main">
+      <section class="payment-intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">The details, beautifully considered</p>
+          <h1 id="page-title">Payment <i>overview</i></h1>
+          <p class="payment-intro__copy">Keep each traveller’s payment plan, due dates and payment links together.</p>
+        </div>
+        <div class="payment-intro__actions"><button class="payment-button payment-button--outline" id="import-quote" type="button">Import a quote <span aria-hidden="true">↥</span></button><button class="payment-button payment-button--gold" id="add-traveller" type="button">Add a traveller <span aria-hidden="true">＋</span></button></div>
+      </section>
+      <input id="quote-file" type="file" accept=".html,.htm,.json,text/html,application/json" hidden />
+
+      <section class="privacy-notice" aria-label="Privacy and payment safety">
+        <span class="privacy-notice__icon" aria-hidden="true">◇</span>
+        <p><strong>Payment tracking only.</strong> This browser stores each traveller’s name, quote reference, agreed price, instalments, payment links and internal adjustment notes. Create payment links in Revolut Business and paste them here. This dashboard does not connect to Revolut or hold other traveller identity or card details; check Revolut and update payment statuses here yourself. Records stay in this browser, so protect the device and browser profile.</p>
+      </section>
+
+      <section class="payment-stats" aria-label="Payment summary">
+        <article class="payment-stat"><span>Travellers</span><strong id="stat-travellers">0</strong><small>individual records</small></article>
+        <article class="payment-stat"><span>Collected</span><strong id="stat-collected">—</strong><small>grouped by currency</small></article>
+        <article class="payment-stat"><span>Outstanding</span><strong id="stat-outstanding">—</strong><small>grouped by currency</small></article>
+        <article class="payment-stat payment-stat--alert"><span>Overdue</span><strong id="stat-overdue">0</strong><small>travellers with overdue amounts</small></article>
+      </section>
+
+      <section class="payment-list" aria-labelledby="travellers-heading">
+        <div class="payment-list__heading">
+          <div><p class="eyebrow">Your group</p><h2 id="travellers-heading">Traveller payments</h2></div>
+          <label class="payment-search"><span class="sr-only">Search travellers</span><input id="search-travellers" type="search" placeholder="Name, quote reference or title" autocomplete="off" /></label>
+        </div>
+        <div id="traveller-list" class="traveller-list" aria-live="polite"></div>
+        <div id="empty-state" class="empty-state">
+          <span aria-hidden="true">✳</span>
+          <h3>Your payment list starts here</h3>
+          <p>Add each traveller with their quoted total, payment schedule and individual links.</p>
+          <button class="payment-button payment-button--outline" type="button" data-empty-add>Add the first traveller</button>
+        </div>
+        <p id="list-status" class="sr-only" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="link-guidance" aria-labelledby="link-guidance-heading">
+        <div><p class="eyebrow">Before a payment link goes out</p><h2 id="link-guidance-heading">A few details worth checking</h2></div>
+        <ul>
+          <li>Open and verify the HTTPS address, recipient, currency and exact instalment amount.</li>
+          <li>Use Revolut Business for payment collection. This tracker never asks for or stores card details, and does not automatically sync payment status.</li>
+          <li>Share the confirmed booking, cancellation and refund terms from the traveller’s quote.</li>
+          <li>Tell the traveller what payment confirmation or receipt they should expect.</li>
+          <li>Import the original quote HTML or JSON draft so every traveller is attached to its quote reference.</li>
+          <li>Create an encrypted link for one traveller. Send its passphrase separately; the link is a snapshot and cannot be revoked or updated.</li>
+          <li>Internal notes and other travellers are excluded from customer links and summaries.</li>
+        </ul>
+        <p class="link-guidance__note">For live, revocable customer access or shared team records, this static GitHub Pages setup needs an authenticated backend. Do not add traveller records or generated share links to the Git repository.</p>
+      </section>
+      <footer class="payment-footer">VELVET EDGE TRAVEL <span>·</span> Thoughtfully tailored travel</footer>
+    </main>
+
+    <dialog class="traveller-dialog" id="traveller-dialog" aria-labelledby="dialog-title">
+      <form id="traveller-form" method="dialog" novalidate>
+        <div class="dialog-heading"><div><p class="eyebrow">Payment details</p><h2 id="dialog-title">Add a traveller</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button></div>
+        <div class="form-grid">
+          <label class="field field--wide"><span>Linked quote</span><select name="quoteId" required><option value="">Import or select a quote…</option></select></label>
+          <label class="field"><span>Quote reference</span><input name="quoteRef" readonly required /></label>
+          <label class="field"><span>Holiday / proposal title</span><input name="quoteTitle" readonly required /></label>
+          <label class="field field--wide"><span>Original quote link <small>Imported where available · HTTPS only</small></span><input name="quoteUrl" type="url" inputmode="url" placeholder="https://" /></label>
+          <label class="field field--wide"><span>Traveller’s full name</span><input name="name" required maxlength="120" autocomplete="name" /></label>
+          <label class="field"><span>Agreed total due <small>Editable after import; change it to the traveller’s current agreed price.</small></span><input name="total" type="number" min="0.01" step="0.01" required inputmode="decimal" placeholder="0.00" /></label>
+          <label class="field"><span>Currency (ISO code)</span><input name="currency" type="text" required minlength="3" maxlength="3" pattern="[A-Za-z]{3}" placeholder="e.g. GBP" autocapitalize="characters" /></label>
+          <p class="quote-price-note field--wide" id="quote-price-note" hidden></p>
+          <label class="field field--wide" id="adjustment-reason-field" hidden><span>Reason for payment adjustment <small>Internal record · required when changing the total, instalments or amounts paid.</small></span><textarea name="adjustmentReason" rows="2" maxlength="500" placeholder="For example: revised deposit agreed; balance recalculated"></textarea></label>
+          <div class="adjustment-history field--wide" id="adjustment-history" hidden></div>
+          <label class="field field--wide"><span>Confirmed booking, cancellation and refund terms</span><textarea name="terms" rows="3" maxlength="1600" placeholder="Copy the agreed terms from this traveller’s quote. Required for a customer summary."></textarea></label>
+          <label class="field field--wide"><span>Private notes <small>Internal only · never appears in the customer summary</small></span><textarea name="notes" rows="2" maxlength="1200" placeholder="Optional notes for your team"></textarea></label>
+        </div>
+        <div class="installment-section">
+          <div class="installment-heading"><div><h3>Payment schedule</h3><p>Amounts must add up to the total due.</p></div><button class="payment-button payment-button--small payment-button--outline" type="button" id="add-installment">＋ Add instalment</button></div>
+          <div id="installment-fields" class="installment-fields"></div>
+          <p class="schedule-total" id="schedule-total" aria-live="polite">Schedule total: £0.00</p>
+        </div>
+        <p id="form-error" class="form-error" role="alert" hidden></p>
+        <div class="dialog-actions"><button class="payment-button payment-button--outline" type="button" data-close-dialog>Cancel</button><button class="payment-button payment-button--gold" type="submit">Save traveller</button></div>
+      </form>
+    </dialog>
+
+    <dialog class="traveller-dialog share-dialog" id="share-dialog" aria-labelledby="share-title">
+      <form id="share-form" method="dialog" novalidate>
+        <div class="dialog-heading"><div><p class="eyebrow">Encrypted customer link</p><h2 id="share-title">Share one traveller</h2></div><button class="icon-button" type="button" data-close-share aria-label="Close">×</button></div>
+        <p class="share-context" id="share-context"></p>
+        <p class="share-explainer">Choose a strong passphrase of at least 12 characters. Send the generated link and passphrase through separate channels. The passphrase is not saved. Anyone with both can open this payment snapshot.</p>
+        <div class="form-grid"><label class="field"><span>Passphrase</span><input name="passphrase" type="password" required minlength="12" autocomplete="new-password" /></label><label class="field"><span>Confirm passphrase</span><input name="confirmPassphrase" type="password" required minlength="12" autocomplete="new-password" /></label></div>
+        <p class="share-error" id="share-error" role="alert" hidden></p>
+        <div class="dialog-actions share-generate"><button class="payment-button payment-button--gold" type="submit">Create encrypted link</button></div>
+        <label class="field share-link-field" id="share-link-field" hidden><span>Customer link</span><textarea id="share-link" rows="4" readonly></textarea></label>
+        <div class="dialog-actions share-copy" id="share-copy" hidden><button class="payment-button payment-button--outline" type="button" data-close-share>Done</button><button class="payment-button payment-button--gold" type="button" id="copy-share-link">Copy link</button></div>
+        <p class="share-warning" id="share-warning" hidden>This link is a snapshot; it will not reflect later payment updates and cannot be revoked. Create a new link after changes and tell the traveller to disregard older copies.</p>
+      </form>
+    </dialog>
+
+    <template id="installment-template">
+      <fieldset class="installment-field">
+        <legend class="installment-field__legend">Instalment</legend>
+        <button class="icon-button installment-remove" type="button" aria-label="Remove instalment">×</button>
+        <div class="installment-grid">
+          <label class="field"><span>Payment name</span><input data-installment="label" required maxlength="80" placeholder="First deposit" /></label>
+          <label class="field"><span>Amount</span><input data-installment="amount" type="number" min="0.01" step="0.01" required inputmode="decimal" placeholder="0.00" /></label>
+          <label class="field"><span>Due date</span><input data-installment="dueDate" type="date" required /></label>
+          <label class="field"><span>Revolut Business payment link <small>Paste the individual HTTPS checkout link · may be added later</small></span><input data-installment="url" type="url" inputmode="url" placeholder="https://" /></label>
+          <label class="field"><span>Cumulative amount paid <small>Update after checking the Revolut Business payment.</small></span><input data-installment="paid" type="number" min="0" step="0.01" required inputmode="decimal" value="0.00" /></label>
+          <label class="field"><span>Payment received on</span><input data-installment="paidDate" type="date" /></label>
+          <label class="field"><span>Revolut transaction reference <small>Optional · internal tracking only</small></span><input data-installment="reference" type="text" maxlength="120" /></label>
+        </div>
+      </fieldset>
+    </template>
+    <script src="payments.js" defer></script>
+  </body>
+</html>

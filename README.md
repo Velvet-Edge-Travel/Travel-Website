@@ -16,6 +16,8 @@ A responsive, multi-page luxury travel website built with plain HTML, CSS and Ja
 - `destinations.html` - Destinations
 - `quote-template.html` - Agent quote builder form
 - `quote-builder.js` - Quote builder and HTML generator
+- `payment-dashboard.html` - Browser-local staff payment tracker
+- `payment-summary.html` - Passphrase-unlocked customer payment summary
 - `velvet-edge-logo-v3.svg` - Header and footer logo
 
 ## Publish with GitHub Pages
@@ -47,6 +49,18 @@ GitHub Pages is public hosting. A hard-to-guess URL and `noindex` tag reduce cas
 - For direct form delivery, configure and test the endpoint described in WEBSITE-UPDATE.md. The demonstration confirmation has been replaced with an explicit email-app workflow.
 - Add real privacy, terms and booking-condition pages and update the footer links.
 - Replace the placeholder Instagram link.
+
+## Payment tracker
+
+`payment-dashboard.html` is a browser-only payment tracker and is not linked from the public site navigation. It can be published with the static site and opened over HTTPS to create customer links. Its records stay in readable browser storage on the current device and do not sync or reach the server. It stores only the traveller name, quote reference, payment plan, Revolut checkout URLs, cumulative amounts received, optional transaction references and private adjustment notes. It does not connect to Revolut Business, collect traveller identity details or store card data; verify receipts in Revolut and update the tracker manually. There is no staff sign-in; anyone who can use the same browser profile may be able to view records. Use a device and browser profile protected by your own sign-in. This version suits one trusted operator and browser, not shared team access.
+
+Select **Import a quote** and choose the sent quote HTML or editable JSON draft from the quote builder. The tracker imports the reference, title, currency, per-person quote amount, terms and published quote URL where present. The quoted per-person amount prefills the traveller’s agreed total when it can be read; that total remains editable. Enter each traveller’s actual amount and payment split, which must add up to the agreed total. Each record and customer summary carries the quote reference. If several quotes are being tracked, select the right quote for each traveller.
+
+After entering a traveller’s agreed total, instalments, due dates, Revolut payment links and confirmed terms, choose **Create customer link**. The page encrypts that one traveller’s snapshot in the link fragment using Web Crypto; the fragment is processed by the browser and is not sent in the page request. The traveller needs the passphrase, which you must send separately. The link requires HTTPS, does not expire or support revocation, and shows the figures as they were when it was created. Create a fresh link after changes and tell the traveller to disregard older copies. Internal adjustment notes, transaction references and other travellers are excluded. A downloaded HTML summary is also available.
+
+On an existing traveller, edit the agreed total, each instalment amount and the cumulative amount received after checking Revolut Business. The instalments must still add up to the agreed total and each received amount must be within its instalment. If you change payment figures, add an internal reason; the tracker logs the date, reason and before/after totals and amount paid. This is a manual adjustment record, not an automatic Revolut transaction feed.
+
+Do not commit traveller records, exported summaries, encrypted links or passphrases to the Git repository. Verify every HTTPS payment URL, amount, currency and due date before sharing. For revocable links, real sign-in, or shared team records, move the dashboard data to an authenticated backend before using those workflows.
 
 ## Local preview
 
