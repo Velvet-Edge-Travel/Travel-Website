@@ -190,6 +190,7 @@
     document.documentElement.dir = "ltr";
     document.querySelectorAll("[data-language-picker]").forEach(picker => picker.value = locale);
     if (googleTranslateReady) applyGoogleLocale(locale);
+    else if(locale !== "en") initialiseGoogleTranslate();
     document.dispatchEvent(new CustomEvent("velvet:localechange", { detail: { locale } }));
   };
   const addPicker = () => {
@@ -222,7 +223,10 @@
     select.value = locale;
     select.dispatchEvent(new Event("change", { bubbles: true }));
   };
+  let googleTranslateStarted = false;
   const initialiseGoogleTranslate = () => {
+    if(googleTranslateStarted) return;
+    googleTranslateStarted = true;
     const host = document.createElement("div");
     host.id = "google_translate_element";
     document.body.append(host);
@@ -249,6 +253,6 @@
   addStyles();
   document.documentElement.lang = initialLocale;
   addPicker();
-  initialiseGoogleTranslate();
+  if(initialLocale !== "en") initialiseGoogleTranslate();
   window.VelvetI18n = { getLocale: currentLocale, setLocale, translate: translateTree, locales };
 })();
