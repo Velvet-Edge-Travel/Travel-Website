@@ -31,42 +31,53 @@
     if (filterForm) renderCollection();
     announce(persisted ? (saved.includes(id) ? "Journey saved on this device." : "Journey removed from your saved list.") : "Saved for this page only. Browser storage is unavailable.");
   });
+  function duration(t) { return t.nights ? t.nights + " nights" : "Tailor-made duration"; }
+  function title(t) { return t.titleHtml ? t.titleHtml.replace(/<(?!\/?em>)[^>]*>/g, "") : escape(t.title); }
   function card(t) {
-    return `<article class="holiday-card"><div class="holiday-card__image"><a href="holiday.html?id=${t.id}" tabindex="-1" aria-hidden="true"><img src="${escape(t.image)}" alt="" loading="lazy" width="640" height="480"></a><button class="save-journey" type="button" data-save-journey="${t.id}">♡ Save journey</button><span class="holiday-category">${escape(t.style)}</span></div><div class="holiday-card__body"><p class="eyebrow">${escape(t.destination)} · ${t.nights} nights</p><h3><a href="holiday.html?id=${t.id}">${escape(t.title)}</a></h3><p>${escape(t.description)}</p><div class="holiday-card__bottom"><div><small>Made around you</small><strong>Tailored quotation</strong></div><a class="text-link" href="holiday.html?id=${t.id}" aria-label="Explore ${escape(t.title)}">Explore</a></div></div></article>`;
+    return `<article class="holiday-card journey-tile"><a class="journey-tile__link" href="holiday.html?id=${t.id}"><img src="${escape(t.image)}" alt="${escape(t.alt)}" loading="lazy" width="640" height="800"><div class="journey-tile__content"><p class="eyebrow">${escape(t.destination)} · ${duration(t)}</p><h3>${title(t)}</h3><p class="journey-tile__copy">${escape(t.description)}</p><span class="journey-tile__explore">Explore this journey <span aria-hidden="true">↗</span></span></div></a><button class="save-journey" type="button" data-save-journey="${t.id}">♡ Save journey</button></article>`;
   }
+  let visibleCount = 12;
   const filterForm = document.querySelector("[data-holiday-filters]");
   function renderCollection() {
     const data = new FormData(filterForm), q = (data.get("q") || "").trim().toLowerCase();
-    let found = trips.filter(t => (!q || `${t.title} ${t.destination} ${t.region} ${t.style} ${t.description}`.toLowerCase().includes(q)) &&
+    let found = trips.filter(t => t.id !== "scotland-golf" && (!q || `${t.title} ${t.destination} ${t.region} ${t.searchText || ""} ${t.style} ${t.description}`.toLowerCase().includes(q)) &&
       (!data.get("region") || t.region === data.get("region")) && (!data.get("style") || t.style === data.get("style")) &&
       (!data.has("saved") || saved.includes(t.id)) &&
-      (!data.get("duration") || (data.get("duration") === "short" ? t.nights <= 7 : data.get("duration") === "medium" ? t.nights >= 8 && t.nights <= 14 : t.nights >= 15)));
-    if (data.get("sort") === "duration") found.sort((a,b) => a.nights - b.nights);
+      (!data.get("duration") || (data.get("duration") === "short" ? t.nights != null && t.nights <= 7 : data.get("duration") === "medium" ? t.nights >= 8 && t.nights <= 14 : t.nights >= 15)));
+    if (data.get("sort") === "duration") found.sort((a,b) => (a.nights ?? Infinity) - (b.nights ?? Infinity));
     document.querySelector("[data-results-status]").textContent = `${found.length} ${found.length === 1 ? "journey" : "journeys"}${data.has("saved") ? " in your saved collection" : " to explore"}`;
-    document.querySelector("[data-holiday-grid]").innerHTML = found.length ? found.map(card).join("") :
+    document.querySelector("[data-holiday-grid]").innerHTML = found.length ? found.slice(0, visibleCount).map(card).join("") :
       `<div class="empty-collection"><h3>${data.has("saved") ? "Your next adventure is waiting." : "Let's make something just for you."}</h3><p>${data.has("saved") ? "Save a journey with the heart button to keep your favourite ideas together on this device." : "We don't have a listed journey matching these filters. Broaden your search or tell us what you have in mind."}</p><button type="button" class="btn btn--dark" data-clear-filters>See all journeys</button> <a class="text-link" href="contact.html?destination=${encodeURIComponent(data.get("region") || data.get("q") || "")}">Ask about a bespoke holiday</a></div>`;
+    let more=document.querySelector('[data-load-journeys]');
+    if(!more){more=document.createElement('button');more.type='button';more.className='btn btn--dark collection-more';more.dataset.loadJourneys='';document.querySelector('[data-holiday-grid]').after(more);more.addEventListener('click',()=>{const previous=visibleCount;visibleCount+=12;renderCollection();const link=document.querySelectorAll('[data-holiday-grid] .journey-tile__link')[previous];link?.focus({preventScroll:true});});}
+    more.hidden=found.length<=visibleCount;more.textContent='Discover more journeys ('+Math.max(0,found.length-visibleCount)+')';
     const url = new URL(location.href); url.search = "";
     for (const [k,v] of data) if (v && !(k === "sort" && v === "recommended")) url.searchParams.set(k, k === "saved" ? "1" : v);
     history.replaceState(null, "", url); updateSaved();
   }
   if (filterForm) {
+    for (const field of ["region","style"]) { const select=filterForm.elements[field]; const first=select.options[0].outerHTML; select.innerHTML=first+[...new Set(trips.map(t=>t[field]))].sort().map(v=>`<option value="${escape(v)}">${escape(v)}</option>`).join(""); }
     for (const name of ["q","region","style","duration","sort"]) if (params.has(name)) filterForm.elements[name].value = params.get(name);
     filterForm.elements.saved.checked = params.get("saved") === "1";
-    filterForm.addEventListener("input", renderCollection);
+    filterForm.addEventListener("input", () => {visibleCount=12;renderCollection();});
     filterForm.addEventListener("submit", e => {e.preventDefault(); renderCollection();});
-    filterForm.addEventListener("reset", () => setTimeout(renderCollection, 0));
+    filterForm.addEventListener("reset", () => setTimeout(()=>{visibleCount=12;renderCollection();}, 0));
     document.addEventListener("click", e => { if (e.target.closest("[data-clear-filters]")) filterForm.reset(); });
     renderCollection();
   }
+  document.querySelectorAll("[data-campaign-collection]").forEach(el=>{const mode=el.dataset.campaignCollection;const items=mode==="golf"?trips.filter(t=>t.type==="golf"):mode==="featured"?["tuscany","botswana","japan"].map(id=>trips.find(t=>t.id===id)):trips.filter(t=>t.type!=="golf");el.innerHTML=items.map(card).join("");});
+  const editorial=document.querySelector('[data-editorial-journeys]');
+  if(editorial){editorial.innerHTML=['aegean-islands','venice','namibia','japan','maldives','french-polynesia'].map(id=>trips.find(t=>t.id===id)).map(t=>`<article class="package editorial-journey"><div class="package__image"><img src="${escape(t.image)}" alt="${escape(t.alt)}" loading="lazy" width="800" height="950"></div><div class="package__body"><p class="eyebrow">${escape(t.destination)}</p><h3>${title(t)}</h3><p>${escape(t.description)}</p><div class="package__details"><span>Your pace<strong>${duration(t)}</strong></span><span>Journey style<strong>${escape(t.style)}</strong></span></div><a class="text-link" href="holiday.html?id=${t.id}">Explore this journey</a></div></article>`).join('')+'<div class="editorial-finale"><p class="eyebrow">There is more to discover</p><h2>Where will your story begin?</h2><a class="btn btn--dark" href="holidays.html">Explore all 40 journeys</a></div>';}
   const detail = document.querySelector("[data-holiday-detail]");
   if (detail) {
     const t = trips.find(t => t.id === params.get("id"));
     if (!t) detail.innerHTML = `<section class="section detail-loading"><div class="container"><p class="eyebrow">Let's find your journey</p><h1>Another adventure awaits.</h1><p>This journey could not be found. Browse our collection to choose your next escape.</p><a class="btn btn--dark" href="holidays.html">Explore all holidays</a></div></section>`;
     else {
       document.title = `${t.title} | Velvet Edge Travel`;
-      detail.innerHTML = `<section class="hero page-hero journey-hero" style="--hero:url('${escape(t.image)}')"><div class="hero__content container"><a class="breadcrumb" href="holidays.html">← Back to the collection</a><p class="eyebrow">${escape(t.destination)} · ${escape(t.style)}</p><h1>${escape(t.title)}</h1><p class="hero__copy">${escape(t.description)}</p></div></section>
-      <section class="section"><div class="container journey-layout"><div><p class="eyebrow">A starting point, made personal</p><h2>Your journey. Your rhythm.</h2><p class="lead">${escape(t.description)}</p><div class="journey-facts"><div><span>Suggested duration</span><strong>${t.nights} nights</strong></div><div><span>Travel style</span><strong>${escape(t.style)}</strong></div><div><span>When to go</span><strong>${escape(t.season)}</strong></div></div>
-      ${t.highlights ? `<h3>Collection highlights</h3><ul>${t.highlights.map(x=>`<li>${escape(x)}</li>`).join("")}</ul>` : ""}
+      detail.innerHTML = `<section class="hero page-hero journey-hero" style="--campaign-accent:${escape(t.accent)};--hero:url('${escape(t.image)}')"><div class="hero__content container"><a class="breadcrumb" href="holidays.html">← Back to the collection</a><p class="eyebrow">${escape(t.destination)} · ${escape(t.style)}</p><h1>${title(t)}</h1><p class="hero__copy">${escape(t.description)}</p></div></section>
+      <section class="section"><div class="container journey-layout"><div><p class="eyebrow">A starting point, made personal</p><h2>Your journey. Your rhythm.</h2><p class="lead">${escape(t.description)}</p><div class="journey-facts"><div><span>Suggested duration</span><strong>${duration(t)}</strong></div><div><span>Travel style</span><strong>${escape(t.style)}</strong></div><div><span>When to go</span><strong>${escape(t.season)}</strong></div></div>
+      ${t.highlights?.length ? `<h3>Collection highlights</h3><ul>${t.highlights.map(x=>`<li>${escape(x)}</li>`).join("")}</ul>` : ""}
+      <details class="campaign-preview"><summary>Your journey inspiration</summary><img src="${escape(t.socialImage)}" alt="${escape(t.title)} — Velvet Edge Travel social campaign" loading="lazy" width="540" height="675"><p>A glimpse of the journey ahead.</p></details>
       <h3>Make it your own</h3><p>Tell us your preferred dates, who is travelling and the experiences that matter to you. Ask about extending your stay, changing the pace or combining this journey with somewhere else.</p>
       <details class="journey-question" open><summary>What will my quotation include?</summary><p>Your personal proposal should confirm the accommodation, travel arrangements, experiences, inclusions, exclusions, availability and total price for your dates. The collection description is inspiration, not a confirmed itinerary.</p></details>
       <details class="journey-question"><summary>Can I travel on different dates?</summary><p>Yes, you can request your preferred dates in the enquiry. Availability and seasonal arrangements will be checked before a quotation is confirmed.</p></details>
@@ -90,7 +101,7 @@
       form.elements.holiday.value = selected.title; form.elements.destination.value = selected.destination;
       form.elements.travelType.value = selected.type;
       const box = form.querySelector("[data-selected-journey]"); box.hidden = false;
-      box.innerHTML = `<span class="eyebrow">Your selected journey</span><h3>${escape(selected.title)}</h3><p>${escape(selected.destination)} · ${selected.nights} suggested nights</p><a href="holiday.html?id=${selected.id}" class="text-link">View journey</a>`;
+      box.innerHTML = `<span class="eyebrow">Your selected journey</span><h3>${escape(selected.title)}</h3><p>${escape(selected.destination)} · ${duration(selected)}</p><a href="holiday.html?id=${selected.id}" class="text-link">View journey</a>`;
     } else {
       if (params.get("type") === "golf") form.elements.travelType.value = "golf";
       form.elements.destination.value = (params.get("destination") || "").slice(0,200);
