@@ -128,6 +128,7 @@
     "Speak with us": ["Parlez-nous", "Sprechen Sie mit uns", "Hable con nosotros", "Parla con noi"],
     "It starts with a conversation.": ["Tout commence par une conversation.", "Es beginnt mit einem Gespräch.", "Todo empieza con una conversación.", "Tutto inizia con una conversazione."],
   });
+  Object.assign(translations, {"Tailor-made duration":["Durée sur mesure","Individuelle Reisedauer","Duración a medida","Durata su misura"],"Explore this journey":["Découvrir ce voyage","Diese Reise entdecken","Explorar este viaje","Scopri questo viaggio"],"Your pace":["Votre rythme","Ihr Tempo","A tu ritmo","Il tuo ritmo"],"Journey style":["Style de voyage","Reisestil","Estilo de viaje","Stile di viaggio"],"Search & filter":["Rechercher et filtrer","Suchen und filtern","Buscar y filtrar","Cerca e filtra"],"Find your kind of journey":["Trouvez votre voyage","Finden Sie Ihre Reise","Encuentra tu viaje","Trova il tuo viaggio"],"Journeys to inspire":["Des voyages pour vous inspirer","Reisen, die inspirieren","Viajes que inspiran","Viaggi che ispirano"],"The journeys you have been dreaming of":["Les voyages dont vous rêvez","Die Reisen Ihrer Träume","Los viajes con los que sueñas","I viaggi che sogni"],"Where will your story begin?":["Où commencera votre histoire ?","Wo beginnt Ihre Geschichte?","¿Dónde comenzará tu historia?","Dove inizierà la tua storia?"],"Your journey inspiration":["Votre inspiration de voyage","Ihre Reiseinspiration","Inspiración para tu viaje","Ispirazione per il tuo viaggio"],"There is more to discover":["Il reste tant à découvrir","Es gibt noch mehr zu entdecken","Hay más por descubrir","C’è ancora molto da scoprire"],"Explore all 40 journeys":["Découvrir les 40 voyages","Alle 40 Reisen entdecken","Explorar los 40 viajes","Scopri tutti i 40 viaggi"],"Find my holiday":["Trouver mon voyage","Meine Reise finden","Encontrar mi viaje","Trova il mio viaggio"],"expected.":["l’attendu.","Erwartete hinaus.","esperado.","l’ordinario."],"Travel beyond the":["Voyagez au-delà de","Reisen Sie über das","Viaja más allá de lo","Viaggia oltre"],"Somewhere":["Quelque part","Irgendwo","En algún lugar","Da qualche parte"],"extraordinary.":["d’extraordinaire.","außergewöhnlich.","extraordinario.","straordinario."]});
   const attributeTranslations = {
     "Choose language": ["Choisir la langue", "Sprache auswählen", "Elegir idioma", "Scegli lingua"],
     "Velvet Edge Travel home": ["Accueil Velvet Edge Travel", "Velvet Edge Travel Startseite", "Inicio de Velvet Edge Travel", "Home Velvet Edge Travel"],
@@ -142,16 +143,21 @@
   const translated = (source, locale) => {
     const generated = window.VELVET_I18N_CATALOG?.[locale];
     if (generated) {
-      const key = Object.keys(window.VELVET_I18N_CATALOG.en || {}).find(candidate => window.VELVET_I18N_CATALOG.en[candidate] === source.trim());
+      const key = Object.keys(window.VELVET_I18N_CATALOG.en || {}).find(candidate => window.VELVET_I18N_CATALOG.en[candidate] === source.trim().replace(/\s+/g, " "));
       if (key && generated[key]) return generated[key];
     }
-    const entry = translations[source.trim()];
+    const normal = source.trim().replace(/\s+/g, " ");
+    const more=normal.match(/^Discover more journeys \((\d+)\)$/);
+    if(more && locale !== 'en') return ({fr:'Découvrir plus de voyages',de:'Weitere Reisen entdecken',es:'Descubrir más viajes',it:'Scopri altri viaggi'}[locale] || 'Discover more journeys')+' ('+more[1]+')';
+    const results=normal.match(/^(\d+) journeys? to explore$/);
+    if(results && locale !== 'en') return results[1]+' '+({fr:'voyages à découvrir',de:'Reisen entdecken',es:'viajes para explorar',it:'viaggi da scoprire'}[locale] || 'journeys to explore');
+    const entry = translations[normal];
     const index = indexFor(locale);
     return entry && index >= 0 ? entry[index] : source;
   };
   const translateTree = (root = document.body) => {
     const locale = currentLocale();
-    if (locale === "en" || !root) return;
+    if (!root) return;
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         if (!node.nodeValue.trim() || node.parentElement?.closest("script, style, select, option, textarea")) return NodeFilter.FILTER_REJECT;
@@ -163,9 +169,10 @@
     nodes.forEach(node => {
       const original = originalText.get(node) || node.nodeValue;
       originalText.set(node, original);
-      const match = original.match(/^(\s*)(.*?)(\s*)$/);
+      const match = original.match(/^(\s*)([\s\S]*?)(\s*)$/);
       const value = translated(match[2], locale);
-      if (value !== match[2]) node.nodeValue = `${match[1]}${value}${match[3]}`;
+      const nextValue = `${match[1]}${value}${match[3]}`;
+      if(node.nodeValue !== nextValue) node.nodeValue = nextValue;
     });
     root.querySelectorAll?.("[aria-label], [placeholder], [title]").forEach(element => {
       ["aria-label", "placeholder", "title"].forEach(attribute => {
@@ -174,6 +181,7 @@
         const generated = window.VELVET_I18N_CATALOG?.[locale];
         const key = Object.keys(window.VELVET_I18N_CATALOG?.en || {}).find(candidate => window.VELVET_I18N_CATALOG.en[candidate] === source);
         const generatedValue = key && generated?.[key];
+        if (locale === "en") { if(source != null) element.setAttribute(attribute, source); return; }
         if (generatedValue) { element.setAttribute(attribute, generatedValue); return; }
         const entry = attributeTranslations[source];
         const index = indexFor(locale);
@@ -185,12 +193,11 @@
   const setLocale = locale => {
     if (!locales[locale]) return;
     try { localStorage.setItem(storageKey, locale); } catch {}
-    if (locale === "en" && currentLocale() !== "en") { restoreEnglish(); return; }
+
     document.documentElement.lang = locale;
     document.documentElement.dir = "ltr";
     document.querySelectorAll("[data-language-picker]").forEach(picker => picker.value = locale);
-    if (googleTranslateReady) applyGoogleLocale(locale);
-    else if(locale !== "en") initialiseGoogleTranslate();
+    translateTree();
     document.dispatchEvent(new CustomEvent("velvet:localechange", { detail: { locale } }));
   };
   const addPicker = () => {
@@ -216,35 +223,6 @@
     style.textContent = '.language-picker{display:inline-flex;align-items:center;margin-left:auto;color:inherit}.language-picker select{min-height:34px;max-width:94px;padding:0 24px 0 9px;border:1px solid currentColor;border-radius:0;color:inherit;background:transparent;font-size:.68rem;font-weight:600;letter-spacing:.06em;cursor:pointer}.language-picker option{color:#12100e;background:#fff}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}#google_translate_element{display:none!important}.goog-te-banner-frame.skiptranslate{display:none!important}body{top:0!important}@media (max-width:1000px){.language-picker{margin-left:auto}.nav{gap:10px}.language-picker select{max-width:72px;padding-left:6px;font-size:.62rem}}';
     document.head.append(style);
   };
-  const applyGoogleLocale = locale => {
-    if (locale === "en") { location.reload(); return; }
-    const select = document.querySelector(".goog-te-combo");
-    if (!select) { setTimeout(() => applyGoogleLocale(locale), 100); return; }
-    select.value = locale;
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  };
-  let googleTranslateStarted = false;
-  const initialiseGoogleTranslate = () => {
-    if(googleTranslateStarted) return;
-    googleTranslateStarted = true;
-    const host = document.createElement("div");
-    host.id = "google_translate_element";
-    document.body.append(host);
-    window.googleTranslateElementInit = () => {
-      window.google?.translate?.TranslateElement && new window.google.translate.TranslateElement({
-        pageLanguage: "en",
-        includedLanguages: "fr,de,es,it",
-        autoDisplay: false,
-      }, host.id);
-      googleTranslateReady = true;
-      if (currentLocale() !== "en") applyGoogleLocale(currentLocale());
-    };
-    const script = document.createElement("script");
-    script.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
-    script.async = true;
-    script.onerror = () => { googleTranslateReady = false; };
-    document.head.append(script);
-  };
   const initialLocale = (() => {
     try { const saved = localStorage.getItem(storageKey); if (locales[saved]) return saved; } catch {}
     const browserLocale = navigator.language.slice(0, 2).toLowerCase();
@@ -253,6 +231,14 @@
   addStyles();
   document.documentElement.lang = initialLocale;
   addPicker();
-  if(initialLocale !== "en") initialiseGoogleTranslate();
+  translateTree();
+  let translating = false;
+  let translationQueued = false;
+  const observer = new MutationObserver(records => {
+    if(translating || translationQueued || !records.some(r=>r.type === "childList" || (r.type === "characterData" && originalText.get(r.target) !== r.target.nodeValue))) return;
+    translationQueued = true;
+    queueMicrotask(() => { translationQueued=false;translating=true;observer.disconnect();translateTree();observer.observe(document.body,{childList:true,subtree:true,characterData:true});translating=false; });
+  });
+  observer.observe(document.body,{childList:true,subtree:true,characterData:true});
   window.VelvetI18n = { getLocale: currentLocale, setLocale, translate: translateTree, locales };
 })();
